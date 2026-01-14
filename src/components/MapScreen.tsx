@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon } from "lucide-react";
+import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon, Wifi, WifiOff, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useSightingsStorage, FaunaSighting } from "@/hooks/useSightingsStorage";
 
 // Fix for default marker icons in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -27,17 +28,6 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
-// Fauna sighting interface
-interface FaunaSighting {
-  id: string;
-  lat: number;
-  lng: number;
-  species: string;
-  observations: string;
-  photo: string | null;
-  timestamp: Date;
-}
 
 // Component to handle location
 function LocationButton() {
@@ -133,7 +123,16 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
 }
 
 const MapScreen = () => {
-  const [sightings, setSightings] = useState<FaunaSighting[]>([]);
+  const { 
+    sightings, 
+    isLoading, 
+    isOnline, 
+    pendingSync, 
+    addSighting, 
+    removeSighting, 
+    syncSightings 
+  } = useSightingsStorage();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -142,6 +141,7 @@ const MapScreen = () => {
     observations: "",
     photo: null as string | null,
   });
+  const [isSyncing, setIsSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultCenter: [number, number] = [-14.235, -51.9253];
@@ -163,23 +163,27 @@ const MapScreen = () => {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!pendingLocation || !formData.species.trim()) return;
 
-    const newSighting: FaunaSighting = {
-      id: Date.now().toString(),
+    await addSighting({
       lat: pendingLocation.lat,
       lng: pendingLocation.lng,
       species: formData.species.trim(),
       observations: formData.observations.trim(),
       photo: formData.photo,
       timestamp: new Date(),
-    };
+    });
 
-    setSightings(prev => [...prev, newSighting]);
     setShowForm(false);
     setPendingLocation(null);
     setFormData({ species: "", observations: "", photo: null });
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    await syncSightings();
+    setIsSyncing(false);
   };
 
   const handleCancel = () => {
@@ -196,7 +200,32 @@ const MapScreen = () => {
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-[1000] glass-nav px-4 py-4"
       >
-        <h1 className="text-xl font-display font-bold text-foreground mb-3">Mapa de Campo</h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl font-display font-bold text-foreground">Mapa de Campo</h1>
+          <div className="flex items-center gap-2">
+            {/* Online/Offline Status */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+              isOnline ? 'bg-nature/20 text-nature-dark' : 'bg-destructive/20 text-destructive'
+            }`}>
+              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+              {isOnline ? 'Online' : 'Offline'}
+            </div>
+            
+            {/* Sync Button */}
+            {pendingSync > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs gap-1 rounded-full"
+                onClick={handleSync}
+                disabled={!isOnline || isSyncing}
+              >
+                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                {pendingSync}
+              </Button>
+            )}
+          </div>
+        </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input 
@@ -459,7 +488,11 @@ const MapScreen = () => {
           ) : (
             <div className="space-y-3 max-h-48 overflow-y-auto">
               {sightings.map((sighting) => (
-                <div key={sighting.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/30">
+                <div key={sighting.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/30 relative">
+                  {/* Sync indicator */}
+                  {!sighting.synced && (
+                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400" title="Pendente de sincronização" />
+                  )}
                   {sighting.photo ? (
                     <img
                       src={sighting.photo}
@@ -480,6 +513,14 @@ const MapScreen = () => {
                       {sighting.timestamp.toLocaleDateString('pt-BR')}
                     </p>
                   </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                    onClick={() => removeSighting(sighting.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               ))}
             </div>
