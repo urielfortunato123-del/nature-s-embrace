@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { MapPin, Navigation, Layers, Search, Plus, LocateFixed } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -25,6 +27,17 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
+
+// Fauna sighting interface
+interface FaunaSighting {
+  id: string;
+  lat: number;
+  lng: number;
+  species: string;
+  observations: string;
+  photo: string | null;
+  timestamp: Date;
+}
 
 // Component to handle location
 function LocationButton() {
@@ -81,14 +94,12 @@ function LayerControl() {
   };
 
   useEffect(() => {
-    // Remove existing tile layers
     map.eachLayer((layer) => {
       if (layer instanceof L.TileLayer) {
         map.removeLayer(layer);
       }
     });
     
-    // Add new tile layer
     L.tileLayer(layers[currentLayer], {
       attribution: currentLayer === 'satellite' 
         ? '&copy; Esri' 
@@ -111,16 +122,70 @@ function LayerControl() {
   );
 }
 
-const MapScreen = () => {
-  const [markers, setMarkers] = useState<{lat: number; lng: number; name: string}[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+// Click handler component
+function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
-  // Default center (Brazil)
+const MapScreen = () => {
+  const [sightings, setSightings] = useState<FaunaSighting[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [formData, setFormData] = useState({
+    species: "",
+    observations: "",
+    photo: null as string | null,
+  });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const defaultCenter: [number, number] = [-14.235, -51.9253];
 
-  const addMarker = (lat: number, lng: number) => {
-    const name = `Local ${markers.length + 1}`;
-    setMarkers([...markers, { lat, lng, name }]);
+  const handleMapClick = (lat: number, lng: number) => {
+    setPendingLocation({ lat, lng });
+    setShowForm(true);
+    setFormData({ species: "", observations: "", photo: null });
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, photo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!pendingLocation || !formData.species.trim()) return;
+
+    const newSighting: FaunaSighting = {
+      id: Date.now().toString(),
+      lat: pendingLocation.lat,
+      lng: pendingLocation.lng,
+      species: formData.species.trim(),
+      observations: formData.observations.trim(),
+      photo: formData.photo,
+      timestamp: new Date(),
+    };
+
+    setSightings(prev => [...prev, newSighting]);
+    setShowForm(false);
+    setPendingLocation(null);
+    setFormData({ species: "", observations: "", photo: null });
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setPendingLocation(null);
+    setFormData({ species: "", observations: "", photo: null });
   };
 
   return (
@@ -161,20 +226,40 @@ const MapScreen = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Render saved markers */}
-          {markers.map((marker, index) => (
-            <Marker key={index} position={[marker.lat, marker.lng]} icon={customIcon}>
+          {/* Click handler */}
+          <MapClickHandler onMapClick={handleMapClick} />
+          
+          {/* Render saved sightings */}
+          {sightings.map((sighting) => (
+            <Marker key={sighting.id} position={[sighting.lat, sighting.lng]} icon={customIcon}>
               <Popup>
-                <div className="text-center">
-                  <strong>{marker.name}</strong>
-                  <br />
-                  <span className="text-xs text-gray-500">
-                    {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
+                <div className="min-w-[200px]">
+                  {sighting.photo && (
+                    <img 
+                      src={sighting.photo} 
+                      alt={sighting.species}
+                      className="w-full h-24 object-cover rounded-lg mb-2"
+                    />
+                  )}
+                  <strong className="text-sm block">{sighting.species}</strong>
+                  {sighting.observations && (
+                    <p className="text-xs text-gray-600 mt-1">{sighting.observations}</p>
+                  )}
+                  <span className="text-xs text-gray-400 block mt-2">
+                    📍 {sighting.lat.toFixed(4)}, {sighting.lng.toFixed(4)}
+                  </span>
+                  <span className="text-xs text-gray-400 block">
+                    🕐 {sighting.timestamp.toLocaleString('pt-BR')}
                   </span>
                 </div>
               </Popup>
             </Marker>
           ))}
+
+          {/* Pending marker */}
+          {pendingLocation && (
+            <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={customIcon} />
+          )}
 
           {/* Map Controls */}
           <div className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]">
@@ -182,7 +267,143 @@ const MapScreen = () => {
             <LocationButton />
           </div>
         </MapContainer>
+
+        {/* Tap instruction */}
+        <div className="absolute bottom-3 left-3 right-3 z-[1000] pointer-events-none">
+          <div className="glass-card rounded-xl px-3 py-2 text-center">
+            <p className="text-xs text-muted-foreground">
+              👆 Toque no mapa para registrar avistamento
+            </p>
+          </div>
+        </div>
       </motion.div>
+
+      {/* Sighting Form Modal */}
+      <AnimatePresence>
+        {showForm && pendingLocation && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] bg-black/50 flex items-end justify-center p-4"
+            onClick={handleCancel}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="w-full max-w-md glass-card rounded-3xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display font-bold text-lg text-foreground">
+                  🦎 Novo Avistamento
+                </h2>
+                <Button size="icon" variant="ghost" onClick={handleCancel}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="text-xs text-muted-foreground mb-4 flex items-center gap-2">
+                <MapPin className="w-3 h-3" />
+                {pendingLocation.lat.toFixed(5)}, {pendingLocation.lng.toFixed(5)}
+              </div>
+
+              <div className="space-y-4">
+                {/* Species Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="species" className="text-foreground">
+                    Nome da Espécie *
+                  </Label>
+                  <Input
+                    id="species"
+                    placeholder="Ex: Capivara, Tucano, Jaguatirica..."
+                    value={formData.species}
+                    onChange={(e) => setFormData(prev => ({ ...prev, species: e.target.value }))}
+                    className="bg-white/60 border-white/40 rounded-xl"
+                  />
+                </div>
+
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label className="text-foreground">Foto do Avistamento</Label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    ref={fileInputRef}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  
+                  {formData.photo ? (
+                    <div className="relative">
+                      <img
+                        src={formData.photo}
+                        alt="Preview"
+                        className="w-full h-32 object-cover rounded-xl"
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full"
+                        onClick={() => setFormData(prev => ({ ...prev, photo: null }))}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full h-24 rounded-xl border-dashed border-2 flex flex-col gap-2"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Camera className="w-6 h-6 text-primary" />
+                      <span className="text-sm text-muted-foreground">
+                        Tirar foto ou escolher da galeria
+                      </span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Observations */}
+                <div className="space-y-2">
+                  <Label htmlFor="observations" className="text-foreground">
+                    Observações
+                  </Label>
+                  <Textarea
+                    id="observations"
+                    placeholder="Comportamento, habitat, quantidade de indivíduos..."
+                    value={formData.observations}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observations: e.target.value }))}
+                    className="bg-white/60 border-white/40 rounded-xl min-h-[80px]"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl"
+                    onClick={handleCancel}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl bg-gradient-to-r from-nature to-nature-dark text-white"
+                    onClick={handleSubmit}
+                    disabled={!formData.species.trim()}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Salvar
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Quick Actions */}
       <motion.div
@@ -197,14 +418,14 @@ const MapScreen = () => {
             variant="outline" 
             className="glass-card border-white/30 rounded-2xl h-auto py-4 flex flex-col gap-2"
             onClick={() => {
-              // Get current map center as a demo marker
-              const lat = -14.235 + (Math.random() - 0.5) * 10;
-              const lng = -51.9253 + (Math.random() - 0.5) * 10;
-              addMarker(lat, lng);
+              navigator.geolocation.getCurrentPosition(
+                (pos) => handleMapClick(pos.coords.latitude, pos.coords.longitude),
+                () => alert("Não foi possível obter localização")
+              );
             }}
           >
             <MapPin className="w-5 h-5 text-primary" />
-            <span className="text-sm">Marcar Local</span>
+            <span className="text-sm">Registrar Aqui</span>
           </Button>
           <Button 
             variant="outline" 
@@ -216,32 +437,47 @@ const MapScreen = () => {
         </div>
       </motion.div>
 
-      {/* Recent Locations */}
+      {/* Recent Sightings */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
         className="px-4 mt-6"
       >
-        <h2 className="font-display font-bold text-foreground mb-3">Locais Marcados ({markers.length})</h2>
+        <h2 className="font-display font-bold text-foreground mb-3">
+          Avistamentos ({sightings.length})
+        </h2>
         <div className="glass-card rounded-3xl p-4">
-          {markers.length === 0 ? (
+          {sightings.length === 0 ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
               <div className="text-center">
                 <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhum local registrado</p>
-                <p className="text-xs mt-1">Clique em "Marcar Local" para adicionar</p>
+                <p className="text-sm">Nenhum avistamento registrado</p>
+                <p className="text-xs mt-1">Toque no mapa para adicionar</p>
               </div>
             </div>
           ) : (
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {markers.map((marker, index) => (
-                <div key={index} className="flex items-center gap-3 p-2 rounded-xl bg-white/30">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{marker.name}</p>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {sightings.map((sighting) => (
+                <div key={sighting.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/30">
+                  {sighting.photo ? (
+                    <img
+                      src={sighting.photo}
+                      alt={sighting.species}
+                      className="w-12 h-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <ImageIcon className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{sighting.species}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {sighting.observations || "Sem observações"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {marker.lat.toFixed(4)}, {marker.lng.toFixed(4)}
+                      {sighting.timestamp.toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                 </div>
@@ -259,9 +495,10 @@ const MapScreen = () => {
         className="floating-action"
         whileTap={{ scale: 0.9 }}
         onClick={() => {
-          const lat = -14.235 + (Math.random() - 0.5) * 10;
-          const lng = -51.9253 + (Math.random() - 0.5) * 10;
-          addMarker(lat, lng);
+          navigator.geolocation.getCurrentPosition(
+            (pos) => handleMapClick(pos.coords.latitude, pos.coords.longitude),
+            () => alert("Ative a localização para registrar avistamento")
+          );
         }}
       >
         <Plus className="w-6 h-6" />
