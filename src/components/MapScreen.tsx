@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MapPin,
@@ -10,6 +10,7 @@ import {
   Wifi,
   WifiOff,
   Compass,
+  Loader2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,10 +52,20 @@ interface Sighting {
   timestamp: Date;
 }
 
+interface GeoSearchResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 const MapScreen = () => {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GeoSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<{
     lat: number;
@@ -68,12 +79,67 @@ const MapScreen = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapDivRef = useRef<HTMLDivElement | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const pendingMarkerRef = useRef<L.Marker | null>(null);
 
   const defaultCenter = useMemo(() => ({ lat: -14.235, lng: -51.9253 }), []);
+
+  // Geocoding search with debounce
+  const searchLocation = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 3) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query
+        )}&limit=5&countrycodes=br`
+      );
+      const data: GeoSearchResult[] = await response.json();
+      setSearchResults(data);
+      setShowResults(data.length > 0);
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Handle search input change with debounce
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchLocation(value);
+    }, 400);
+  };
+
+  // Handle selecting a search result
+  const handleSelectResult = (result: GeoSearchResult) => {
+    const lat = parseFloat(result.lat);
+    const lng = parseFloat(result.lon);
+
+    const map = mapRef.current;
+    if (map) {
+      map.setView([lat, lng], 14, { animate: true });
+    }
+
+    setSearchQuery(result.display_name.split(",")[0]);
+    setShowResults(false);
+    setSearchResults([]);
+  };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -263,13 +329,44 @@ const MapScreen = () => {
           transition={{ delay: 0.1 }}
           className="relative"
         >
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
+          {isSearching && (
+            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground animate-spin z-10" />
+          )}
           <Input
             placeholder="Buscar localização..."
-            className="pl-12 pr-4 h-14 bg-white/90 dark:bg-card/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base"
+            className="pl-12 pr-12 h-14 bg-white/90 dark:bg-card/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={() => searchResults.length > 0 && setShowResults(true)}
+            onBlur={() => setTimeout(() => setShowResults(false), 200)}
           />
+
+          {/* Search Results Dropdown */}
+          <AnimatePresence>
+            {showResults && searchResults.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="absolute top-full left-0 right-0 mt-2 bg-white/95 dark:bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden z-50 border border-white/40 dark:border-border/40"
+              >
+                {searchResults.map((result) => (
+                  <motion.button
+                    key={result.place_id}
+                    whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
+                    onClick={() => handleSelectResult(result)}
+                    className="w-full px-4 py-3 text-left flex items-start gap-3 border-b border-border/20 last:border-0"
+                  >
+                    <MapPin className="w-4 h-4 text-sky-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm text-foreground line-clamp-2">
+                      {result.display_name}
+                    </span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </motion.div>
 
