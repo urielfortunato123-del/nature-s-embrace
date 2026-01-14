@@ -1,26 +1,25 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpen, Search, Leaf, Bird, Fish, Bug, Trees, Droplets, Scale, Shield, ChevronLeft, Download, Sparkles } from "lucide-react";
+import { BookOpen, Search, ChevronLeft, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { offlineLibrary, searchLibrary, filterByCategory, getLibraryStats, conservationStatus, LibraryItem } from "@/data/offlineLibrary";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
 
 const categories = [
-  { id: "all", label: "Todos", icon: BookOpen, gradient: "from-violet-400 to-purple-500" },
-  { id: "mamiferos", label: "Mamíferos", icon: Leaf, gradient: "from-amber-400 to-orange-500" },
-  { id: "aves", label: "Aves", icon: Bird, gradient: "from-sky-400 to-blue-500" },
-  { id: "repteis", label: "Répteis", icon: Leaf, gradient: "from-lime-400 to-green-500" },
-  { id: "anfibios", label: "Anfíbios", icon: Leaf, gradient: "from-emerald-400 to-teal-500" },
-  { id: "peixes", label: "Peixes", icon: Fish, gradient: "from-cyan-400 to-blue-500" },
-  { id: "insetos", label: "Insetos", icon: Bug, gradient: "from-yellow-400 to-amber-500" },
-  { id: "flora", label: "Flora", icon: Trees, gradient: "from-green-400 to-emerald-500" },
-  { id: "biomas", label: "Biomas", icon: Trees, gradient: "from-teal-400 to-cyan-500" },
-  { id: "rios", label: "Rios", icon: Droplets, gradient: "from-blue-400 to-indigo-500" },
-  { id: "conservacao", label: "Conservação", icon: Shield, gradient: "from-rose-400 to-pink-500" },
-  { id: "legislacao", label: "Legislação", icon: Scale, gradient: "from-slate-400 to-gray-500" },
+  { id: "all", label: "Todos", icon: "📚", gradient: "from-violet-400 to-purple-500", shadowColor: "shadow-violet-500/30" },
+  { id: "mamiferos", label: "Mamíferos", icon: "🦁", gradient: "from-amber-400 to-orange-500", shadowColor: "shadow-amber-500/30" },
+  { id: "aves", label: "Aves", icon: "🦜", gradient: "from-sky-400 to-blue-500", shadowColor: "shadow-sky-500/30" },
+  { id: "repteis", label: "Répteis", icon: "🐊", gradient: "from-lime-400 to-green-500", shadowColor: "shadow-lime-500/30" },
+  { id: "anfibios", label: "Anfíbios", icon: "🐸", gradient: "from-emerald-400 to-teal-500", shadowColor: "shadow-emerald-500/30" },
+  { id: "peixes", label: "Peixes", icon: "🐟", gradient: "from-cyan-400 to-blue-500", shadowColor: "shadow-cyan-500/30" },
+  { id: "insetos", label: "Insetos", icon: "🦋", gradient: "from-yellow-400 to-amber-500", shadowColor: "shadow-yellow-500/30" },
+  { id: "flora", label: "Flora", icon: "🌳", gradient: "from-green-400 to-emerald-500", shadowColor: "shadow-green-500/30" },
+  { id: "biomas", label: "Biomas", icon: "🏞️", gradient: "from-teal-400 to-cyan-500", shadowColor: "shadow-teal-500/30" },
+  { id: "rios", label: "Rios", icon: "🌊", gradient: "from-blue-400 to-indigo-500", shadowColor: "shadow-blue-500/30" },
+  { id: "conservacao", label: "Conservação", icon: "🛡️", gradient: "from-rose-400 to-pink-500", shadowColor: "shadow-rose-500/30" },
+  { id: "legislacao", label: "Legislação", icon: "⚖️", gradient: "from-slate-400 to-gray-500", shadowColor: "shadow-slate-500/30" },
 ];
 
 const categoryEmojis: Record<string, string> = {
@@ -89,7 +88,7 @@ const LibraryScreen = () => {
             </div>
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 shadow-lg"
+              className="px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30"
             >
               <span className="text-sm font-bold text-white">{stats.total} itens</span>
             </motion.div>
@@ -102,61 +101,99 @@ const LibraryScreen = () => {
             transition={{ delay: 0.1 }}
             className="relative"
           >
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center">
-              <Search className="w-5 h-5 text-white" />
-            </div>
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input 
               placeholder="Buscar fauna, flora, biomas..." 
-              className="pl-16 pr-4 h-14 bg-white/80 backdrop-blur-xl border-white/40 rounded-2xl text-base shadow-lg"
+              className="pl-12 pr-4 h-14 bg-white/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </motion.div>
         </motion.div>
 
-        {/* Categories */}
+        {/* Categories Grid */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
           className="px-5 mb-4"
         >
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-2 pb-2">
-              {categories.map((cat, index) => {
-                const Icon = cat.icon;
-                const count = getCategoryCount(cat.id);
-                const isActive = activeCategory === cat.id;
-                return (
-                  <motion.button
-                    key={cat.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 + index * 0.02 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`relative flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all ${
-                      isActive
-                        ? "text-white shadow-lg" 
-                        : "bg-white/70 backdrop-blur-xl text-foreground shadow-md"
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeLibraryCat"
-                        className={`absolute inset-0 bg-gradient-to-r ${cat.gradient} rounded-xl`}
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                    <Icon className="w-4 h-4 relative z-10" />
-                    <span className="text-xs font-semibold relative z-10">{cat.label}</span>
-                    <span className="text-xs opacity-70 relative z-10">({count})</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </ScrollArea>
+          <div className="grid grid-cols-4 gap-2">
+            {categories.slice(0, 8).map((cat, index) => {
+              const count = getCategoryCount(cat.id);
+              const isActive = activeCategory === cat.id;
+              return (
+                <motion.button
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.03 }}
+                  whileHover={{ scale: 1.05, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`
+                    relative overflow-hidden rounded-2xl p-3
+                    bg-gradient-to-br ${cat.gradient}
+                    shadow-lg ${cat.shadowColor}
+                    transition-all duration-300
+                    ${isActive ? 'ring-4 ring-white/60' : ''}
+                  `}
+                >
+                  {/* Glossy overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                  
+                  {/* Icon */}
+                  <div className="relative z-10 text-2xl mb-1 drop-shadow-md text-center">
+                    {cat.icon}
+                  </div>
+                  
+                  {/* Label */}
+                  <p className="relative z-10 text-white font-semibold text-[10px] drop-shadow-md text-center truncate">
+                    {cat.label}
+                  </p>
+                </motion.button>
+              );
+            })}
+          </div>
+          
+          {/* Second row */}
+          <div className="grid grid-cols-4 gap-2 mt-2">
+            {categories.slice(8).map((cat, index) => {
+              const count = getCategoryCount(cat.id);
+              const isActive = activeCategory === cat.id;
+              return (
+                <motion.button
+                  key={cat.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + index * 0.03 }}
+                  whileHover={{ scale: 1.05, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`
+                    relative overflow-hidden rounded-2xl p-3
+                    bg-gradient-to-br ${cat.gradient}
+                    shadow-lg ${cat.shadowColor}
+                    transition-all duration-300
+                    ${isActive ? 'ring-4 ring-white/60' : ''}
+                  `}
+                >
+                  {/* Glossy overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                  
+                  {/* Icon */}
+                  <div className="relative z-10 text-2xl mb-1 drop-shadow-md text-center">
+                    {cat.icon}
+                  </div>
+                  
+                  {/* Label */}
+                  <p className="relative z-10 text-white font-semibold text-[10px] drop-shadow-md text-center truncate">
+                    {cat.label}
+                  </p>
+                </motion.button>
+              );
+            })}
+          </div>
         </motion.div>
 
         {/* Results */}
@@ -166,6 +203,11 @@ const LibraryScreen = () => {
           transition={{ delay: 0.3 }}
           className="px-5"
         >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display font-bold text-lg text-foreground">Resultados</h2>
+            <span className="text-sm text-muted-foreground bg-white/60 backdrop-blur px-3 py-1 rounded-full">{filteredItems.length} itens</span>
+          </div>
+          
           <div className="space-y-3">
             {filteredItems.length === 0 ? (
               <motion.div 
@@ -184,7 +226,8 @@ const LibraryScreen = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.03 * Math.min(index, 10) }}
-                  whileHover={{ scale: 1.01, y: -2 }}
+                  whileHover={{ scale: 1.02, x: 5 }}
+                  whileTap={{ scale: 0.98 }}
                   className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 cursor-pointer shadow-lg border border-white/40 hover:shadow-xl transition-all"
                   onClick={() => setSelectedItem(item)}
                 >
@@ -323,7 +366,7 @@ const LibraryScreen = () => {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full mt-6 py-4 bg-gradient-to-r from-violet-400 to-purple-500 text-white font-semibold rounded-2xl shadow-lg flex items-center justify-center gap-2"
+                    className="w-full mt-6 py-4 bg-gradient-to-r from-violet-400 to-purple-500 text-white font-semibold rounded-2xl shadow-lg shadow-violet-500/30 flex items-center justify-center gap-2"
                   >
                     <Download className="w-5 h-5" />
                     Salvar para Offline

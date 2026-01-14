@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon, Wifi, WifiOff, RefreshCw, Trash2, Compass } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, RefreshCw, Compass } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -116,24 +115,29 @@ function CustomMapControls() {
       <motion.button 
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl shadow-lg flex items-center justify-center"
+        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30 flex items-center justify-center"
         onClick={cycleLayer}
         title={`Camada: ${currentLayer}`}
       >
-        <Layers className="w-5 h-5 text-violet-500" />
+        <Layers className="w-5 h-5 text-white" />
       </motion.button>
       <motion.button 
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl shadow-lg flex items-center justify-center"
+        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center"
         onClick={handleLocate}
         disabled={locating}
       >
-        <LocateFixed className={`w-5 h-5 text-emerald-500 ${locating ? 'animate-pulse' : ''}`} />
+        <LocateFixed className={`w-5 h-5 text-white ${locating ? 'animate-pulse' : ''}`} />
       </motion.button>
     </div>
   );
 }
+
+const statsItems = [
+  { id: 'sightings', label: 'Avistamentos', icon: '📍', gradient: 'from-emerald-400 to-green-500', shadowColor: 'shadow-emerald-500/30' },
+  { id: 'species', label: 'Espécies', icon: '🦜', gradient: 'from-amber-400 to-orange-500', shadowColor: 'shadow-amber-500/30' },
+];
 
 const MapScreen = () => {
   const { 
@@ -224,10 +228,10 @@ const MapScreen = () => {
             {/* Online/Offline Status */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-md ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg ${
                 isOnline 
-                  ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white' 
-                  : 'bg-gradient-to-r from-rose-400 to-red-500 text-white'
+                  ? 'bg-gradient-to-r from-emerald-400 to-green-500 shadow-emerald-500/30 text-white' 
+                  : 'bg-gradient-to-r from-rose-400 to-red-500 shadow-rose-500/30 text-white'
               }`}
             >
               {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
@@ -239,7 +243,7 @@ const MapScreen = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/80 backdrop-blur-xl shadow-md text-foreground"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30 text-white"
                 onClick={handleSync}
                 disabled={!isOnline || isSyncing}
               >
@@ -257,12 +261,10 @@ const MapScreen = () => {
           transition={{ delay: 0.1 }}
           className="relative"
         >
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
-            <Search className="w-5 h-5 text-white" />
-          </div>
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input 
             placeholder="Buscar localização..." 
-            className="pl-16 pr-4 h-14 bg-white/80 backdrop-blur-xl border-white/40 rounded-2xl text-base shadow-lg"
+            className="pl-12 pr-4 h-14 bg-white/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -332,9 +334,9 @@ const MapScreen = () => {
           transition={{ delay: 0.4 }}
           className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none"
         >
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl px-4 py-3 text-center shadow-lg border border-white/50">
-            <p className="text-sm text-foreground font-medium flex items-center justify-center gap-2">
-              <Compass className="w-4 h-4 text-emerald-500" />
+          <div className="bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl px-4 py-3 text-center shadow-lg shadow-sky-500/30">
+            <p className="text-sm text-white font-medium flex items-center justify-center gap-2">
+              <Compass className="w-4 h-4" />
               Toque no mapa para registrar avistamento
             </p>
           </div>
@@ -348,29 +350,33 @@ const MapScreen = () => {
         transition={{ delay: 0.3 }}
         className="px-5 mt-5"
       >
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
-                <MapPin className="w-6 h-6 text-white" />
-              </div>
+        <div className="grid grid-cols-2 gap-3">
+          <motion.div
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="text-3xl">📍</div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{sightings.length}</p>
-                <p className="text-xs text-muted-foreground">Avistamentos</p>
+                <p className="text-2xl font-bold text-white">{sightings.length}</p>
+                <p className="text-xs text-white/80">Avistamentos</p>
               </div>
             </div>
-          </div>
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
-                <Navigation className="w-6 h-6 text-white" />
-              </div>
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.05, y: -5 }}
+            className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30"
+          >
+            <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="text-3xl">🦜</div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{new Set(sightings.map(s => s.species)).size}</p>
-                <p className="text-xs text-muted-foreground">Espécies</p>
+                <p className="text-2xl font-bold text-white">{new Set(sightings.map(s => s.species)).size}</p>
+                <p className="text-xs text-white/80">Espécies</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </motion.div>
 
@@ -406,8 +412,8 @@ const MapScreen = () => {
                 </motion.button>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5 bg-muted/30 rounded-xl px-3 py-2">
-                <MapPin className="w-4 h-4 text-emerald-500" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5 bg-gradient-to-r from-sky-400/20 to-blue-500/20 rounded-xl px-3 py-2">
+                <MapPin className="w-4 h-4 text-sky-500" />
                 <span>{pendingLocation.lat.toFixed(5)}, {pendingLocation.lng.toFixed(5)}</span>
               </div>
 
@@ -448,7 +454,7 @@ const MapScreen = () => {
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
-                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg"
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-500 text-white flex items-center justify-center shadow-lg"
                         onClick={() => setFormData(prev => ({ ...prev, photo: null }))}
                       >
                         <X className="w-4 h-4" />
@@ -456,15 +462,13 @@ const MapScreen = () => {
                     </div>
                   ) : (
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-muted/20"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sky-400/10 to-blue-500/10 hover:from-sky-400/20 hover:to-blue-500/20 transition-colors"
                     >
-                      <Camera className="w-8 h-8 text-emerald-500" />
-                      <span className="text-sm text-muted-foreground">
-                        Tirar foto ou escolher da galeria
-                      </span>
+                      <span className="text-3xl">📷</span>
+                      <span className="text-sm text-muted-foreground font-medium">Adicionar foto</span>
                     </motion.button>
                   )}
                 </div>
@@ -484,17 +488,27 @@ const MapScreen = () => {
                   />
                 </div>
 
-                {/* Submit */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSubmit}
-                  disabled={!formData.species.trim()}
-                  className="w-full py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <Check className="w-5 h-5" />
-                  Salvar Avistamento
-                </motion.button>
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleCancel}
+                    className="flex-1 py-4 bg-muted/50 text-foreground font-semibold rounded-2xl"
+                  >
+                    Cancelar
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleSubmit}
+                    disabled={!formData.species.trim()}
+                    className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Check className="w-5 h-5" />
+                    Salvar
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -508,7 +522,10 @@ const MapScreen = () => {
         transition={{ delay: 0.5, type: "spring" }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white shadow-xl z-50"
+        onClick={() => {
+          // Center on Brazil and allow clicking
+        }}
+        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-rose-500/30 z-50"
       >
         <Plus className="w-7 h-7" />
       </motion.button>
