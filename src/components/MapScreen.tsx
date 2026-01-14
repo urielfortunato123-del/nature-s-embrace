@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useSightings, type Sighting } from "@/contexts/SightingsContext";
 
 // Fix for default marker icons in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -45,17 +46,19 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-interface Sighting {
-  id: string;
-  lat: number;
-  lng: number;
-  species: string;
-  observations: string;
-  photo: string | null;
-  timestamp: string; // ISO string for localStorage serialization
-}
-
-const SIGHTINGS_STORAGE_KEY = "bionatura_map_sightings";
+const cameraIcon = new L.Icon({
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+  className: "camera-marker",
+});
 
 interface GeoSearchResult {
   place_id: number;
@@ -106,18 +109,7 @@ const mapLayers: MapLayer[] = [
 ];
 
 const MapScreen = () => {
-  // Load sightings from localStorage on initial render
-  const [sightings, setSightings] = useState<Sighting[]>(() => {
-    try {
-      const stored = localStorage.getItem(SIGHTINGS_STORAGE_KEY);
-      if (stored) {
-        return JSON.parse(stored) as Sighting[];
-      }
-    } catch (error) {
-      console.error("Error loading sightings from localStorage:", error);
-    }
-    return [];
-  });
+  const { sightings, addSighting } = useSightings();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GeoSearchResult[]>([]);
@@ -201,14 +193,7 @@ const MapScreen = () => {
     setSearchResults([]);
   };
 
-  // Save sightings to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIGHTINGS_STORAGE_KEY, JSON.stringify(sightings));
-    } catch (error) {
-      console.error("Error saving sightings to localStorage:", error);
-    }
-  }, [sightings]);
+  // Online status is now managed locally, sightings are saved via context
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -285,7 +270,8 @@ const MapScreen = () => {
     markersLayer.clearLayers();
 
     sightings.forEach((sighting) => {
-      const marker = L.marker([sighting.lat, sighting.lng], { icon: customIcon });
+      const icon = sighting.source === 'camera' ? cameraIcon : customIcon;
+      const marker = L.marker([sighting.lat, sighting.lng], { icon });
 
       const photoHtml = sighting.photo
         ? `<img src="${sighting.photo}" alt="${escapeHtml(
@@ -294,14 +280,19 @@ const MapScreen = () => {
         : "";
 
       const obsHtml = sighting.observations
-        ? `<p style="font-size:12px;color:#4b5563;margin-top:4px;">${escapeHtml(
+        ? `<p style="font-size:12px;color:#4b5563;margin-top:4px;max-height:60px;overflow-y:auto;">${escapeHtml(
             sighting.observations
-          )}</p>`
+          ).substring(0, 200)}${sighting.observations.length > 200 ? '...' : ''}</p>`
         : "";
 
+      const sourceHtml = sighting.source === 'camera' 
+        ? `<span style="font-size:10px;background:#3b82f6;color:white;padding:2px 6px;border-radius:4px;margin-right:4px;">📷 Câmera</span>`
+        : `<span style="font-size:10px;background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:4px;">📍 Mapa</span>`;
+
       const html = `
-        <div style="min-width:200px">
+        <div style="min-width:200px;max-width:280px">
           ${photoHtml}
+          <div style="margin-bottom:6px">${sourceHtml}</div>
           <strong style="font-size:14px;display:block">${escapeHtml(
             sighting.species
           )}</strong>
@@ -349,17 +340,15 @@ const MapScreen = () => {
   const handleSubmit = () => {
     if (!pendingLocation || !formData.species.trim()) return;
 
-    const newSighting: Sighting = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    addSighting({
       lat: pendingLocation.lat,
       lng: pendingLocation.lng,
       species: formData.species.trim(),
       observations: formData.observations.trim(),
       photo: formData.photo,
-      timestamp: new Date().toISOString(),
-    };
+      source: 'map',
+    });
 
-    setSightings((prev) => [...prev, newSighting]);
     setShowForm(false);
     setPendingLocation(null);
     setFormData({ species: "", observations: "", photo: null });

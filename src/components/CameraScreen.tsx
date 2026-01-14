@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Flashlight, FlashlightOff, Grid3X3, X, Check, Download, Loader2, Search, Copy } from "lucide-react";
+import { RotateCcw, Flashlight, FlashlightOff, Grid3X3, X, Check, Download, Loader2, Search, Copy, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSightings } from "@/contexts/SightingsContext";
 
 const modes = [
   { id: 'photo', label: 'Foto', icon: '📷', gradient: 'from-rose-400 to-pink-500', shadowColor: 'shadow-rose-500/30' },
@@ -18,6 +19,7 @@ const quickActions = [
 ];
 
 const CameraScreen = () => {
+  const { addSighting, getCurrentLocation } = useSightings();
   const [activeMode, setActiveMode] = useState<'photo' | 'ocr' | 'ai'>('photo');
   const [flashOn, setFlashOn] = useState(false);
   const [gridOn, setGridOn] = useState(false);
@@ -29,6 +31,7 @@ const CameraScreen = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [isSavingToMap, setIsSavingToMap] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -291,6 +294,60 @@ const CameraScreen = () => {
   const reanalyze = () => {
     if (capturedImage) {
       analyzeImage(capturedImage, activeMode);
+    }
+  };
+
+  // Extract species name from AI analysis result
+  const extractSpeciesName = (result: string): string => {
+    // Try to extract the first line or main identification
+    const lines = result.split('\n').filter(l => l.trim());
+    if (lines.length > 0) {
+      // Remove common prefixes and get the species name
+      let species = lines[0]
+        .replace(/^(espécie:|identificação:|nome:|species:|name:)/i, '')
+        .replace(/^\*+|\*+$/g, '')
+        .trim();
+      // Limit to reasonable length
+      if (species.length > 50) {
+        species = species.substring(0, 50) + '...';
+      }
+      return species || 'Espécie não identificada';
+    }
+    return 'Espécie não identificada';
+  };
+
+  const saveToMap = async () => {
+    if (!analysisResult || !capturedImage) return;
+
+    setIsSavingToMap(true);
+    try {
+      const location = await getCurrentLocation();
+      
+      if (!location) {
+        setIsSavingToMap(false);
+        return;
+      }
+
+      const speciesName = extractSpeciesName(analysisResult);
+      
+      addSighting({
+        lat: location.lat,
+        lng: location.lng,
+        species: speciesName,
+        observations: analysisResult,
+        photo: capturedImage,
+        source: 'camera',
+      });
+
+      setShowResult(false);
+      setCapturedImage(null);
+      setAnalysisResult(null);
+      startCamera();
+    } catch (error) {
+      console.error('Error saving to map:', error);
+      toast.error('Erro ao salvar no mapa');
+    } finally {
+      setIsSavingToMap(false);
     }
   };
 
@@ -563,6 +620,27 @@ const CameraScreen = () => {
                 >
                   Nova Foto
                 </motion.button>
+                {activeMode === 'ai' && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={saveToMap}
+                    disabled={isSavingToMap}
+                    className="flex-1 py-3 bg-gradient-to-r from-sky-500 to-blue-500 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSavingToMap ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-5 h-5" />
+                        Salvar no Mapa
+                      </>
+                    )}
+                  </motion.button>
+                )}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
