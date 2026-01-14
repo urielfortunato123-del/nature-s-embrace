@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, RefreshCw, Compass } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useSightingsStorage, FaunaSighting } from "@/hooks/useSightingsStorage";
+import { useSightingsStorage } from "@/hooks/useSightingsStorage";
 
 // Fix for default marker icons in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -38,106 +38,32 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
   return null;
 }
 
-// Custom control component that renders inside map container
-function CustomMapControls() {
+// Map controls component - simplified version without DOM manipulation
+function MapControls({ onLocate, onLayerChange }: { onLocate: () => void; onLayerChange: () => void }) {
+  return null; // Controls are now rendered outside MapContainer
+}
+
+// Location handler component
+function LocationHandler({ onLocationFound }: { onLocationFound: (lat: number, lng: number) => void }) {
   const map = useMap();
-  const [locating, setLocating] = useState(false);
-  const [currentLayer, setCurrentLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
-  const controlRef = useRef<HTMLDivElement>(null);
-
-  const layers: Record<string, string> = {
-    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    terrain: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-  };
-
+  
   const handleLocate = () => {
-    setLocating(true);
     map.locate({ setView: true, maxZoom: 16 });
     
     map.once("locationfound", (e) => {
-      setLocating(false);
-      L.marker(e.latlng, { icon: customIcon })
-        .addTo(map)
-        .bindPopup("Você está aqui! 📍")
-        .openPopup();
+      onLocationFound(e.latlng.lat, e.latlng.lng);
     });
 
     map.once("locationerror", () => {
-      setLocating(false);
       alert("Não foi possível obter sua localização");
     });
   };
 
-  const cycleLayer = () => {
-    const layerOrder: ('street' | 'satellite' | 'terrain')[] = ['street', 'satellite', 'terrain'];
-    const currentIndex = layerOrder.indexOf(currentLayer);
-    const nextLayer = layerOrder[(currentIndex + 1) % layerOrder.length];
-    setCurrentLayer(nextLayer);
-  };
-
-  useEffect(() => {
-    map.eachLayer((layer) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer);
-      }
-    });
-    
-    L.tileLayer(layers[currentLayer], {
-      attribution: currentLayer === 'satellite' 
-        ? '&copy; Esri' 
-        : currentLayer === 'terrain'
-        ? '&copy; OpenTopoMap'
-        : '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-  }, [currentLayer, map]);
-
-  // Append buttons to the map container to avoid context issues
-  useEffect(() => {
-    const container = map.getContainer();
-    const controlDiv = controlRef.current;
-    if (controlDiv && container) {
-      container.appendChild(controlDiv);
-    }
-    return () => {
-      if (controlDiv && controlDiv.parentNode) {
-        controlDiv.parentNode.removeChild(controlDiv);
-      }
-    };
-  }, [map]);
-
-  return (
-    <div 
-      ref={controlRef}
-      className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]"
-      style={{ position: 'absolute' }}
-    >
-      <motion.button 
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30 flex items-center justify-center"
-        onClick={cycleLayer}
-        title={`Camada: ${currentLayer}`}
-      >
-        <Layers className="w-5 h-5 text-white" />
-      </motion.button>
-      <motion.button 
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center"
-        onClick={handleLocate}
-        disabled={locating}
-      >
-        <LocateFixed className={`w-5 h-5 text-white ${locating ? 'animate-pulse' : ''}`} />
-      </motion.button>
-    </div>
-  );
+  // Expose handleLocate through a custom event
+  (window as any).__mapLocate = handleLocate;
+  
+  return null;
 }
-
-const statsItems = [
-  { id: 'sightings', label: 'Avistamentos', icon: '📍', gradient: 'from-emerald-400 to-green-500', shadowColor: 'shadow-emerald-500/30' },
-  { id: 'species', label: 'Espécies', icon: '🦜', gradient: 'from-amber-400 to-orange-500', shadowColor: 'shadow-amber-500/30' },
-];
 
 const MapScreen = () => {
   const { 
@@ -146,7 +72,6 @@ const MapScreen = () => {
     isOnline, 
     pendingSync, 
     addSighting, 
-    removeSighting, 
     syncSightings 
   } = useSightingsStorage();
   
@@ -159,6 +84,7 @@ const MapScreen = () => {
     photo: null as string | null,
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultCenter: [number, number] = [-14.235, -51.9253];
@@ -207,6 +133,12 @@ const MapScreen = () => {
     setShowForm(false);
     setPendingLocation(null);
     setFormData({ species: "", observations: "", photo: null });
+  };
+
+  const handleLocateClick = () => {
+    if ((window as any).__mapLocate) {
+      (window as any).__mapLocate();
+    }
   };
 
   return (
@@ -289,8 +221,8 @@ const MapScreen = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Click handler */}
           <MapClickHandler onMapClick={handleMapClick} />
+          <LocationHandler onLocationFound={(lat, lng) => setUserLocation({ lat, lng })} />
           
           {/* Render saved sightings */}
           {sightings.map((sighting) => (
@@ -324,8 +256,34 @@ const MapScreen = () => {
             <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={customIcon} />
           )}
 
-          <CustomMapControls />
+          {/* User location marker */}
+          {userLocation && (
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={customIcon}>
+              <Popup>Você está aqui! 📍</Popup>
+            </Marker>
+          )}
         </MapContainer>
+
+        {/* Map Controls - Outside MapContainer */}
+        <div className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30 flex items-center justify-center"
+            onClick={() => {}}
+            title="Camadas"
+          >
+            <Layers className="w-5 h-5 text-white" />
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center"
+            onClick={handleLocateClick}
+          >
+            <LocateFixed className="w-5 h-5 text-white" />
+          </motion.button>
+        </div>
 
         {/* Tap instruction */}
         <motion.div 
@@ -522,9 +480,6 @@ const MapScreen = () => {
         transition={{ delay: 0.5, type: "spring" }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          // Center on Brazil and allow clicking
-        }}
         className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center text-white shadow-xl shadow-rose-500/30 z-50"
       >
         <Plus className="w-7 h-7" />
