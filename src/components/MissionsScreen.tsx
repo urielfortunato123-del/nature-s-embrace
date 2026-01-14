@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Plus, Check, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
 
 interface Mission {
@@ -9,7 +10,7 @@ interface Mission {
   text: string;
   completed: boolean;
   priority: "low" | "medium" | "high";
-  createdAt: Date;
+  createdAt: string; // Store as string for JSON serialization
 }
 
 const priorityConfig = {
@@ -26,7 +27,7 @@ const quickMissions = [
 ];
 
 const MissionsScreen = () => {
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const [missions, setMissions] = useLocalStorage<Mission[]>("fauna-missions", []);
   const [newMission, setNewMission] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<"low" | "medium" | "high">("medium");
 
@@ -38,7 +39,7 @@ const MissionsScreen = () => {
       text: newMission.trim(),
       completed: false,
       priority: selectedPriority,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
     };
 
     setMissions((prev) => [mission, ...prev]);
@@ -247,7 +248,7 @@ const MissionsScreen = () => {
                         {mission.text}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {mission.createdAt.toLocaleDateString("pt-BR")}
+                        {new Date(mission.createdAt).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <motion.button
