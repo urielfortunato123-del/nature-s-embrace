@@ -7,6 +7,8 @@ import SpeciesScreen from "@/components/SpeciesScreen";
 import CameraScreen from "@/components/CameraScreen";
 import ReportsScreen from "@/components/ReportsScreen";
 import LibraryScreen from "@/components/LibraryScreen";
+import MissionsScreen from "@/components/MissionsScreen";
+import NotesScreen from "@/components/NotesScreen";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -31,9 +33,9 @@ const Index = () => {
       case "library":
         return <LibraryScreen />;
       case "missions":
-        return <ReportsScreen />; // Placeholder - will show reports as missions
+        return <MissionsScreen />;
       case "notes":
-        return <ReportsScreen />; // Placeholder - will show notes
+        return <NotesScreen />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
