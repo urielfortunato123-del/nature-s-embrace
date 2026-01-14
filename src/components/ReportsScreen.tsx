@@ -1,13 +1,22 @@
 import { motion } from "framer-motion";
-import { FileText, Plus, Download, Share2, Calendar, Sparkles, FolderOpen, ClipboardList, AlertTriangle, TreePine } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plus, Download, Share2, FolderOpen, FileText } from "lucide-react";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
 
 const reportTypes = [
-  { id: "field", label: "Relatório de Campo", icon: ClipboardList, gradient: "from-emerald-400 to-green-500" },
-  { id: "technical", label: "Laudo Técnico", icon: FileText, gradient: "from-violet-400 to-purple-500" },
-  { id: "monitoring", label: "Monitoramento", icon: TreePine, gradient: "from-sky-400 to-blue-500" },
-  { id: "rescue", label: "Resgate de Fauna", icon: AlertTriangle, gradient: "from-amber-400 to-orange-500" },
+  { id: "field", label: "Relatório de Campo", icon: "📋", gradient: "from-emerald-400 to-green-500", shadowColor: "shadow-emerald-500/30" },
+  { id: "technical", label: "Laudo Técnico", icon: "📄", gradient: "from-violet-400 to-purple-500", shadowColor: "shadow-violet-500/30" },
+  { id: "monitoring", label: "Monitoramento", icon: "🌲", gradient: "from-sky-400 to-blue-500", shadowColor: "shadow-sky-500/30" },
+  { id: "rescue", label: "Resgate de Fauna", icon: "🦎", gradient: "from-amber-400 to-orange-500", shadowColor: "shadow-amber-500/30" },
+];
+
+const quickActions = [
+  { id: "export", label: "Exportar", icon: "📥", gradient: "from-violet-400 to-purple-500", shadowColor: "shadow-violet-500/30" },
+  { id: "share", label: "Compartilhar", icon: "📤", gradient: "from-sky-400 to-blue-500", shadowColor: "shadow-sky-500/30" },
+];
+
+const templates = [
+  { id: "ibama", label: "Relatório Padrão IBAMA", subtitle: "Modelo oficial para fiscalização", icon: "📋", gradient: "from-violet-400 to-purple-500" },
+  { id: "fauna", label: "Laudo de Fauna", subtitle: "Avaliação ambiental completa", icon: "🌿", gradient: "from-emerald-400 to-green-500" },
 ];
 
 const ReportsScreen = () => {
@@ -41,9 +50,9 @@ const ReportsScreen = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-11 h-11 rounded-2xl bg-white/80 backdrop-blur-xl shadow-lg flex items-center justify-center"
+              className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30 flex items-center justify-center"
             >
-              <FolderOpen className="w-5 h-5 text-foreground" />
+              <FolderOpen className="w-5 h-5 text-white" />
             </motion.button>
           </div>
         </motion.div>
@@ -56,26 +65,36 @@ const ReportsScreen = () => {
           className="px-5"
         >
           <h2 className="font-display font-bold text-lg text-foreground mb-4">Novo Relatório</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {reportTypes.map((type, index) => {
-              const Icon = type.icon;
-              return (
-                <motion.button
-                  key={type.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                  whileHover={{ scale: 1.03, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="bg-white/70 backdrop-blur-xl rounded-2xl p-5 text-left shadow-lg border border-white/40 hover:shadow-xl transition-all"
-                >
-                  <div className={`w-14 h-14 bg-gradient-to-br ${type.gradient} rounded-2xl flex items-center justify-center mb-4 shadow-lg`}>
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground block">{type.label}</span>
-                </motion.button>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-3">
+            {reportTypes.map((type, index) => (
+              <motion.button
+                key={type.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + index * 0.08 }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className={`
+                  relative overflow-hidden rounded-2xl p-4
+                  bg-gradient-to-br ${type.gradient}
+                  shadow-lg ${type.shadowColor}
+                  transition-all duration-300 text-left
+                `}
+              >
+                {/* Glossy overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                
+                {/* Icon */}
+                <div className="relative z-10 text-4xl mb-2 drop-shadow-md">
+                  {type.icon}
+                </div>
+                
+                {/* Label */}
+                <p className="relative z-10 text-white font-semibold text-sm drop-shadow-md">
+                  {type.label}
+                </p>
+              </motion.button>
+            ))}
           </div>
         </motion.div>
 
@@ -86,23 +105,29 @@ const ReportsScreen = () => {
           transition={{ delay: 0.5 }}
           className="px-5 mt-6"
         >
-          <div className="flex gap-3">
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl h-14 flex items-center justify-center gap-2 shadow-lg"
-            >
-              <Download className="w-5 h-5 text-violet-500" />
-              <span className="font-semibold text-foreground">Exportar</span>
-            </motion.button>
-            <motion.button 
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl h-14 flex items-center justify-center gap-2 shadow-lg"
-            >
-              <Share2 className="w-5 h-5 text-sky-500" />
-              <span className="font-semibold text-foreground">Compartilhar</span>
-            </motion.button>
+          <div className="grid grid-cols-2 gap-3">
+            {quickActions.map((action, index) => (
+              <motion.button 
+                key={action.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.08 }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                className={`
+                  relative overflow-hidden rounded-2xl p-4
+                  bg-gradient-to-br ${action.gradient}
+                  shadow-lg ${action.shadowColor}
+                  transition-all duration-300
+                `}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  <span className="text-2xl">{action.icon}</span>
+                  <span className="font-semibold text-white">{action.label}</span>
+                </div>
+              </motion.button>
+            ))}
           </div>
         </motion.div>
 
@@ -127,9 +152,9 @@ const ReportsScreen = () => {
               <motion.div
                 animate={{ y: [0, -8, 0] }}
                 transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg"
+                className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg shadow-violet-500/30"
               >
-                <FileText className="w-12 h-12 text-white" />
+                <span className="text-5xl">📄</span>
               </motion.div>
               <h3 className="font-display font-bold text-xl text-foreground mb-2">Nenhum relatório</h3>
               <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
@@ -138,7 +163,7 @@ const ReportsScreen = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30"
               >
                 <Plus className="w-5 h-5" />
                 Criar Relatório
@@ -155,32 +180,32 @@ const ReportsScreen = () => {
           className="px-5 mt-6 mb-4"
         >
           <h2 className="font-display font-bold text-lg text-foreground mb-4">Modelos</h2>
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/40 overflow-hidden">
-            <motion.div 
-              whileHover={{ backgroundColor: "rgba(0,0,0,0.02)" }}
-              className="flex items-center gap-4 p-4 border-b border-white/30 cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400/20 to-purple-500/20 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-violet-500" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">Relatório Padrão IBAMA</p>
-                <p className="text-xs text-muted-foreground">Modelo oficial para fiscalização</p>
-              </div>
-              <Sparkles className="w-5 h-5 text-amber-500" />
-            </motion.div>
-            <motion.div 
-              whileHover={{ backgroundColor: "rgba(0,0,0,0.02)" }}
-              className="flex items-center gap-4 p-4 cursor-pointer"
-            >
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-green-500/20 flex items-center justify-center">
-                <TreePine className="w-6 h-6 text-emerald-500" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">Laudo de Fauna</p>
-                <p className="text-xs text-muted-foreground">Avaliação ambiental completa</p>
-              </div>
-            </motion.div>
+          <div className="space-y-3">
+            {templates.map((template, index) => (
+              <motion.button
+                key={template.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 + index * 0.08 }}
+                whileHover={{ scale: 1.02, x: 5 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  w-full relative overflow-hidden rounded-2xl p-4
+                  bg-gradient-to-r ${template.gradient}
+                  shadow-lg transition-all duration-300 text-left
+                `}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent" />
+                <div className="relative z-10 flex items-center gap-4">
+                  <div className="text-3xl">{template.icon}</div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-white">{template.label}</p>
+                    <p className="text-xs text-white/80">{template.subtitle}</p>
+                  </div>
+                  <span className="text-xl">✨</span>
+                </div>
+              </motion.button>
+            ))}
           </div>
         </motion.div>
       </div>
@@ -192,7 +217,7 @@ const ReportsScreen = () => {
         transition={{ delay: 0.8, type: "spring" }}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white shadow-xl z-50"
+        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white shadow-xl shadow-violet-500/30 z-50"
       >
         <Plus className="w-7 h-7" />
       </motion.button>

@@ -1,18 +1,26 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Image, ScanLine, Zap, RotateCcw, Sparkles, X, FlashlightOff, Flashlight, Grid3X3 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Camera, Image, ScanLine, Zap, RotateCcw, Flashlight, FlashlightOff, Grid3X3 } from "lucide-react";
+
+const modes = [
+  { id: 'photo', label: 'Foto', icon: '📷', gradient: 'from-rose-400 to-pink-500', shadowColor: 'shadow-rose-500/30' },
+  { id: 'ocr', label: 'OCR', icon: '📝', gradient: 'from-violet-400 to-purple-500', shadowColor: 'shadow-violet-500/30' },
+  { id: 'ai', label: 'IA', icon: '🤖', gradient: 'from-amber-400 to-orange-500', shadowColor: 'shadow-amber-500/30' },
+];
+
+const quickActions = [
+  { id: 'gallery', label: 'Galeria', icon: '🖼️', gradient: 'from-cyan-400 to-blue-500', shadowColor: 'shadow-cyan-500/30' },
+  { id: 'scan', label: 'Escanear', icon: '📄', gradient: 'from-emerald-400 to-green-500', shadowColor: 'shadow-emerald-500/30' },
+  { id: 'identify', label: 'Identificar', icon: '🔍', gradient: 'from-fuchsia-400 to-purple-500', shadowColor: 'shadow-fuchsia-500/30' },
+  { id: 'record', label: 'Gravar', icon: '🎥', gradient: 'from-red-400 to-rose-500', shadowColor: 'shadow-red-500/30' },
+];
 
 const CameraScreen = () => {
   const [activeMode, setActiveMode] = useState<'photo' | 'ocr' | 'ai'>('photo');
   const [flashOn, setFlashOn] = useState(false);
   const [gridOn, setGridOn] = useState(false);
 
-  const modes = [
-    { id: 'photo', label: 'Foto', icon: Camera, gradient: 'from-rose-400 to-pink-500' },
-    { id: 'ocr', label: 'OCR', icon: ScanLine, gradient: 'from-violet-400 to-purple-500' },
-    { id: 'ai', label: 'IA', icon: Zap, gradient: 'from-amber-400 to-orange-500' },
-  ];
+  const currentMode = modes.find(m => m.id === activeMode)!;
 
   return (
     <div className="min-h-screen pb-28 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
@@ -38,8 +46,10 @@ const CameraScreen = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setFlashOn(!flashOn)}
-              className={`w-11 h-11 rounded-2xl backdrop-blur-xl flex items-center justify-center transition-all ${
-                flashOn ? 'bg-amber-500 shadow-lg shadow-amber-500/30' : 'bg-white/10'
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                flashOn 
+                  ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/30' 
+                  : 'bg-white/10'
               }`}
             >
               {flashOn ? (
@@ -52,8 +62,10 @@ const CameraScreen = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setGridOn(!gridOn)}
-              className={`w-11 h-11 rounded-2xl backdrop-blur-xl flex items-center justify-center transition-all ${
-                gridOn ? 'bg-white/30' : 'bg-white/10'
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+                gridOn 
+                  ? 'bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30' 
+                  : 'bg-white/10'
               }`}
             >
               <Grid3X3 className="w-5 h-5 text-white/70" />
@@ -81,7 +93,7 @@ const CameraScreen = () => {
                 transition={{ repeat: Infinity, duration: 2.5 }}
                 className="w-28 h-28 mx-auto mb-4 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"
               >
-                <Camera className="w-14 h-14 text-white/40" />
+                <span className="text-5xl">{currentMode.icon}</span>
               </motion.div>
               <p className="text-white/50 font-medium">Toque para capturar</p>
             </div>
@@ -119,9 +131,9 @@ const CameraScreen = () => {
             animate={{ opacity: 1, y: 0 }}
             className="absolute top-4 left-1/2 -translate-x-1/2"
           >
-            <div className={`px-4 py-2 rounded-full bg-gradient-to-r ${modes.find(m => m.id === activeMode)?.gradient} shadow-lg`}>
+            <div className={`px-4 py-2 rounded-full bg-gradient-to-r ${currentMode.gradient} shadow-lg ${currentMode.shadowColor}`}>
               <span className="text-sm font-semibold text-white">
-                {modes.find(m => m.id === activeMode)?.label}
+                {currentMode.label}
               </span>
             </div>
           </motion.div>
@@ -140,19 +152,19 @@ const CameraScreen = () => {
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center"
+            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/30 flex items-center justify-center"
           >
-            <Image className="w-7 h-7 text-white/80" />
+            <span className="text-2xl">🖼️</span>
           </motion.button>
 
           {/* Capture Button */}
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.9 }}
-            className={`w-24 h-24 rounded-full bg-gradient-to-br ${modes.find(m => m.id === activeMode)?.gradient} flex items-center justify-center shadow-2xl`}
+            className={`w-24 h-24 rounded-full bg-gradient-to-br ${currentMode.gradient} flex items-center justify-center shadow-2xl ${currentMode.shadowColor}`}
           >
             <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border-4 border-white/40">
-              <Camera className="w-9 h-9 text-white" />
+              <span className="text-3xl">{currentMode.icon}</span>
             </div>
           </motion.button>
 
@@ -160,9 +172,9 @@ const CameraScreen = () => {
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center"
+            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-fuchsia-400 to-purple-500 shadow-lg shadow-fuchsia-500/30 flex items-center justify-center"
           >
-            <RotateCcw className="w-7 h-7 text-white/80" />
+            <RotateCcw className="w-7 h-7 text-white" />
           </motion.button>
         </div>
       </motion.div>
@@ -174,58 +186,77 @@ const CameraScreen = () => {
         transition={{ delay: 0.5 }}
         className="px-5 mt-8"
       >
-        <div className="flex justify-center gap-3">
-          {modes.map((mode) => {
-            const Icon = mode.icon;
+        <div className="grid grid-cols-3 gap-3">
+          {modes.map((mode, index) => {
             const isActive = activeMode === mode.id;
             return (
               <motion.button
                 key={mode.id}
-                whileHover={{ scale: 1.05 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.08 }}
+                whileHover={{ scale: 1.05, y: -5 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setActiveMode(mode.id as typeof activeMode)}
-                className={`relative flex flex-col items-center py-3 px-6 rounded-2xl transition-all ${
-                  isActive ? '' : 'bg-white/5'
-                }`}
+                className={`
+                  relative overflow-hidden rounded-2xl p-4
+                  bg-gradient-to-br ${mode.gradient}
+                  shadow-lg ${mode.shadowColor}
+                  transition-all duration-300
+                  ${isActive ? 'ring-4 ring-white/60' : 'opacity-70'}
+                `}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeCameraMode"
-                    className={`absolute inset-0 bg-gradient-to-r ${mode.gradient} rounded-2xl`}
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <Icon className={`w-6 h-6 mb-1 relative z-10 ${isActive ? 'text-white' : 'text-white/50'}`} />
-                <span className={`text-xs font-semibold relative z-10 ${isActive ? 'text-white' : 'text-white/50'}`}>
+                {/* Glossy overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                
+                {/* Icon */}
+                <div className="relative z-10 text-3xl mb-1 drop-shadow-md text-center">
+                  {mode.icon}
+                </div>
+                
+                {/* Label */}
+                <p className="relative z-10 text-white font-semibold text-sm drop-shadow-md text-center">
                   {mode.label}
-                </span>
+                </p>
               </motion.button>
             );
           })}
         </div>
       </motion.div>
 
-      {/* Recent Captures */}
+      {/* Quick Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
         className="px-5 mt-8"
       >
-        <h2 className="font-display font-bold text-white mb-4">Capturas Recentes</h2>
-        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
-          <div className="flex items-center justify-center py-4">
-            <div className="text-center">
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              >
-                <Image className="w-10 h-10 mx-auto mb-3 text-white/30" />
-              </motion.div>
-              <p className="text-sm text-white/50">Nenhuma captura ainda</p>
-              <p className="text-xs text-white/30 mt-1">Suas fotos aparecerão aqui</p>
-            </div>
-          </div>
+        <h2 className="font-display font-bold text-white mb-4">Ações Rápidas</h2>
+        <div className="grid grid-cols-4 gap-3">
+          {quickActions.map((action, index) => (
+            <motion.button
+              key={action.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 + index * 0.05 }}
+              whileHover={{ scale: 1.05, y: -3 }}
+              whileTap={{ scale: 0.95 }}
+              className={`
+                relative overflow-hidden rounded-2xl p-3
+                bg-gradient-to-br ${action.gradient}
+                shadow-lg ${action.shadowColor}
+                transition-all duration-300
+              `}
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+              <div className="relative z-10 text-2xl mb-1 drop-shadow-md text-center">
+                {action.icon}
+              </div>
+              <p className="relative z-10 text-white font-semibold text-xs drop-shadow-md text-center">
+                {action.label}
+              </p>
+            </motion.button>
+          ))}
         </div>
       </motion.div>
     </div>
