@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
 
 interface Note {
@@ -11,7 +12,7 @@ interface Note {
   content: string;
   category: string;
   location?: string;
-  createdAt: Date;
+  createdAt: string; // Store as string for JSON serialization
   color: string;
 }
 
@@ -32,7 +33,7 @@ const noteColors = [
 ];
 
 const NotesScreen = () => {
-  const [notes, setNotes] = useState<Note[]>([]);
+  const [notes, setNotes] = useLocalStorage<Note[]>("fauna-notes", []);
   const [showForm, setShowForm] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [formData, setFormData] = useState({
@@ -51,7 +52,7 @@ const NotesScreen = () => {
       content: formData.content.trim(),
       category: formData.category,
       location: formData.location.trim() || undefined,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       color: noteColors[Math.floor(Math.random() * noteColors.length)],
     };
 
@@ -216,7 +217,7 @@ const NotesScreen = () => {
                     <p className="text-white/80 text-xs line-clamp-3">{note.content}</p>
                     <div className="flex items-center gap-1 mt-2 text-white/60 text-[10px]">
                       <Calendar className="w-3 h-3" />
-                      {note.createdAt.toLocaleDateString("pt-BR")}
+                      {new Date(note.createdAt).toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                 </motion.div>
