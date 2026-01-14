@@ -16,6 +16,7 @@ interface SightingsContextType {
   sightings: Sighting[];
   addSighting: (sighting: Omit<Sighting, 'id' | 'timestamp'>) => void;
   removeSighting: (id: string) => void;
+  updateSighting: (id: string, updates: Partial<Pick<Sighting, 'species' | 'observations'>>) => void;
   getCurrentLocation: () => Promise<{ lat: number; lng: number } | null>;
 }
 
@@ -68,6 +69,12 @@ export const SightingsProvider = ({ children }: { children: ReactNode }) => {
     setSightings((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
+  const updateSighting = useCallback((id: string, updates: Partial<Pick<Sighting, 'species' | 'observations'>>) => {
+    setSightings((prev) => prev.map((s) => 
+      s.id === id ? { ...s, ...updates } : s
+    ));
+  }, []);
+
   const getCurrentLocation = useCallback((): Promise<{ lat: number; lng: number } | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -98,7 +105,7 @@ export const SightingsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <SightingsContext.Provider value={{ sightings, addSighting, removeSighting, getCurrentLocation }}>
+    <SightingsContext.Provider value={{ sightings, addSighting, removeSighting, updateSighting, getCurrentLocation }}>
       {children}
     </SightingsContext.Provider>
   );

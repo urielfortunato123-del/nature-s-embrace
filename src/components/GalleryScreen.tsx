@@ -12,12 +12,16 @@ import {
   Search,
   Filter,
   ChevronDown,
-  ZoomIn
+  ZoomIn,
+  Pencil,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +44,14 @@ import { ptBR } from "date-fns/locale";
 type FilterType = "all" | "camera" | "map" | "with-photo";
 
 const GalleryScreen = () => {
-  const { sightings, removeSighting } = useSightings();
+  const { sightings, removeSighting, updateSighting } = useSightings();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [selectedSighting, setSelectedSighting] = useState<Sighting | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editSpecies, setEditSpecies] = useState("");
+  const [editObservations, setEditObservations] = useState("");
 
   const filteredSightings = sightings
     .filter((s) => {
@@ -67,6 +74,38 @@ const GalleryScreen = () => {
     setDeleteConfirm(null);
     if (selectedSighting?.id === id) {
       setSelectedSighting(null);
+    }
+  };
+
+  const startEditing = () => {
+    if (selectedSighting) {
+      setEditSpecies(selectedSighting.species);
+      setEditObservations(selectedSighting.observations);
+      setIsEditing(true);
+    }
+  };
+
+  const saveEdits = () => {
+    if (selectedSighting && editSpecies.trim()) {
+      updateSighting(selectedSighting.id, {
+        species: editSpecies.trim(),
+        observations: editObservations.trim()
+      });
+      setSelectedSighting({
+        ...selectedSighting,
+        species: editSpecies.trim(),
+        observations: editObservations.trim()
+      });
+      setIsEditing(false);
+      toast.success("Registro atualizado!");
+    }
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    if (selectedSighting) {
+      setEditSpecies(selectedSighting.species);
+      setEditObservations(selectedSighting.observations);
     }
   };
 
@@ -251,21 +290,60 @@ const GalleryScreen = () => {
                 size="icon"
                 variant="ghost"
                 className="text-white hover:bg-white/20"
-                onClick={() => setSelectedSighting(null)}
+                onClick={() => {
+                  setSelectedSighting(null);
+                  setIsEditing(false);
+                }}
               >
                 <X className="w-6 h-6" />
               </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="text-red-400 hover:bg-red-500/20"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteConfirm(selectedSighting.id);
-                }}
-              >
-                <Trash2 className="w-5 h-5" />
-              </Button>
+              <div className="flex gap-2">
+                {isEditing ? (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-white hover:bg-white/20"
+                      onClick={cancelEditing}
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-green-400 hover:bg-green-500/20"
+                      onClick={saveEdits}
+                    >
+                      <Check className="w-5 h-5" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-white hover:bg-white/20"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditing();
+                      }}
+                    >
+                      <Pencil className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="text-red-400 hover:bg-red-500/20"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteConfirm(selectedSighting.id);
+                      }}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Image */}
@@ -296,10 +374,19 @@ const GalleryScreen = () => {
               <div className="w-12 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-4" />
               
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">
-                    {selectedSighting.species}
-                  </h2>
+                <div className="flex-1">
+                  {isEditing ? (
+                    <Input
+                      value={editSpecies}
+                      onChange={(e) => setEditSpecies(e.target.value)}
+                      className="text-xl font-bold mb-2"
+                      placeholder="Nome da espécie"
+                    />
+                  ) : (
+                    <h2 className="text-xl font-bold text-foreground">
+                      {selectedSighting.species}
+                    </h2>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <Badge 
                       variant="secondary"
@@ -338,13 +425,23 @@ const GalleryScreen = () => {
                   </span>
                 </div>
 
-                {selectedSighting.observations && (
+                {isEditing ? (
+                  <div className="mt-4">
+                    <label className="text-sm text-muted-foreground mb-2 block">Observações</label>
+                    <Textarea
+                      value={editObservations}
+                      onChange={(e) => setEditObservations(e.target.value)}
+                      className="min-h-[100px]"
+                      placeholder="Adicione observações sobre o avistamento..."
+                    />
+                  </div>
+                ) : selectedSighting.observations ? (
                   <div className="mt-4 p-3 rounded-xl bg-muted/50">
                     <p className="text-sm text-foreground whitespace-pre-wrap">
                       {selectedSighting.observations}
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </motion.div>
           </motion.div>
