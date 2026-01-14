@@ -1,88 +1,164 @@
 import { motion } from "framer-motion";
-import { MapPin, Leaf, Camera, FileText, BookOpen, Sparkles } from "lucide-react";
+import { MapPin, Leaf, Camera, FileText, ScanText, Download, Search, Mic, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import biologistAvatar from "@/assets/biologist-avatar.jpeg";
+import natureHeroBg from "@/assets/nature-hero-bg.png";
 
 interface HomeScreenProps {
   onNavigate: (tab: string) => void;
 }
 
 const features = [
-  { id: "map", icon: MapPin, label: "Mapa", color: "bg-nature", description: "Explore localizações" },
-  { id: "species", icon: Leaf, label: "Espécies", color: "bg-sun", description: "Catálogo de fauna" },
-  { id: "camera", icon: Camera, label: "Câmera", color: "bg-primary", description: "Registre avistamentos" },
-  { id: "reports", icon: FileText, label: "Relatórios", color: "bg-secondary", description: "Laudos técnicos" },
-  { id: "library", icon: BookOpen, label: "Biblioteca", color: "bg-sky", description: "Material de estudo" },
+  { 
+    id: "map", 
+    icon: "🗺️", 
+    label: "Mapa", 
+    gradient: "from-pink-400 to-rose-500",
+    shadowColor: "shadow-pink-500/30"
+  },
+  { 
+    id: "species", 
+    icon: "🦜", 
+    label: "Espécies", 
+    gradient: "from-fuchsia-400 to-purple-500",
+    shadowColor: "shadow-purple-500/30"
+  },
+  { 
+    id: "camera", 
+    icon: "📷", 
+    label: "Câmera", 
+    gradient: "from-rose-400 to-pink-500",
+    shadowColor: "shadow-rose-500/30"
+  },
+  { 
+    id: "reports", 
+    icon: "📋", 
+    label: "Relatórios", 
+    gradient: "from-amber-400 to-orange-500",
+    shadowColor: "shadow-amber-500/30"
+  },
+  { 
+    id: "ocr", 
+    icon: "📝", 
+    label: "OCR Scanner", 
+    gradient: "from-violet-400 to-purple-500",
+    shadowColor: "shadow-violet-500/30"
+  },
+  { 
+    id: "library", 
+    icon: "📂", 
+    label: "Downloads", 
+    gradient: "from-yellow-400 to-amber-500",
+    shadowColor: "shadow-yellow-500/30"
+  },
 ];
 
 const HomeScreen = ({ onNavigate }: HomeScreenProps) => {
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Background with avatar */}
+      {/* Full Background Image */}
       <div className="absolute inset-0 z-0">
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20"
-          style={{ backgroundImage: `url(${biologistAvatar})` }}
+        <img 
+          src={natureHeroBg} 
+          alt="Natureza"
+          className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-purple-900/40" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 px-4 pt-12 pb-24 safe-top">
+      <div className="relative z-10 min-h-screen flex flex-col safe-top">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="px-4 pt-4 flex items-center justify-between"
         >
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🌿</span>
+            <h1 className="text-2xl font-display font-bold text-white drop-shadow-lg">
+              Vida & Natureza
+            </h1>
+            <span className="text-2xl">🌿</span>
+          </div>
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="text-white/80 hover:text-white hover:bg-white/20"
+          >
+            <Settings className="w-5 h-5" />
+          </Button>
+        </motion.div>
+
+        {/* Avatar and Welcome */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex-1 flex flex-col items-center justify-center px-4 -mt-8"
+        >
+          {/* Avatar Circle */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring" }}
-            className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-4 border-white shadow-glow"
+            transition={{ delay: 0.3, type: "spring", bounce: 0.4 }}
+            className="relative mb-4"
           >
-            <img 
-              src={biologistAvatar} 
-              alt="Bióloga"
-              className="w-full h-full object-cover"
-            />
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white/80 shadow-2xl">
+              <img 
+                src={biologistAvatar} 
+                alt="Giovanna Quézia"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            {/* Decorative elements */}
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute -top-2 -right-2 text-2xl"
+            >
+              🦋
+            </motion.div>
+            <motion.div 
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute -bottom-1 -left-2 text-xl"
+            >
+              🌸
+            </motion.div>
           </motion.div>
-          
-          <motion.h1 
+
+          <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-3xl font-display font-bold text-foreground mb-2"
+            transition={{ delay: 0.5 }}
+            className="text-white/90 text-sm font-medium drop-shadow-md mb-6"
           >
-            BioNatura
-          </motion.h1>
-          
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-muted-foreground font-medium flex items-center justify-center gap-2"
-          >
-            <Sparkles className="w-4 h-4 text-sun" />
-            Sua companheira de campo
-            <Sparkles className="w-4 h-4 text-sun" />
+            Olá, Giovanna Quézia! 🌺
           </motion.p>
         </motion.div>
 
-        {/* Quote */}
+        {/* Search Bar */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
-          className="glass-card rounded-3xl p-5 mb-8 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="px-6 mb-6"
         >
-          <p className="text-sm italic text-foreground/80 leading-relaxed">
-            "Sempre olhei para a natureza como casa, e animais como obra de Deus. 
-            Quando vejo a natureza, parece que estou olhando Deus diretamente."
-          </p>
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <div className="w-8 h-0.5 bg-primary/40 rounded-full" />
-            <Leaf className="w-4 h-4 text-nature" />
-            <div className="w-8 h-0.5 bg-primary/40 rounded-full" />
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar..." 
+              className="pl-12 pr-12 h-12 bg-white/90 backdrop-blur-md border-0 rounded-full shadow-lg text-foreground placeholder:text-muted-foreground"
+            />
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <Mic className="w-5 h-5" />
+            </Button>
           </div>
         </motion.div>
 
@@ -90,53 +166,40 @@ const HomeScreen = ({ onNavigate }: HomeScreenProps) => {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="grid grid-cols-2 gap-4"
+          transition={{ delay: 0.5 }}
+          className="px-4 pb-28"
         >
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
+          <div className="grid grid-cols-3 gap-3">
+            {features.map((feature, index) => (
               <motion.button
                 key={feature.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 + index * 0.1 }}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onNavigate(feature.id)}
-                className="glass-card rounded-3xl p-5 text-left transition-all duration-300 hover:shadow-nature"
+                transition={{ delay: 0.6 + index * 0.08 }}
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onNavigate(feature.id === 'ocr' ? 'camera' : feature.id)}
+                className={`
+                  relative overflow-hidden rounded-2xl p-4
+                  bg-gradient-to-br ${feature.gradient}
+                  shadow-lg ${feature.shadowColor}
+                  transition-all duration-300
+                `}
               >
-                <div className={`w-12 h-12 ${feature.color} rounded-2xl flex items-center justify-center mb-3 shadow-soft`}>
-                  <Icon className="w-6 h-6 text-white" />
+                {/* Glossy overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                
+                {/* Icon */}
+                <div className="relative z-10 text-4xl mb-2 drop-shadow-md">
+                  {feature.icon}
                 </div>
-                <h3 className="font-bold text-foreground mb-1">{feature.label}</h3>
-                <p className="text-xs text-muted-foreground">{feature.description}</p>
+                
+                {/* Label */}
+                <p className="relative z-10 text-white font-semibold text-sm drop-shadow-md">
+                  {feature.label}
+                </p>
               </motion.button>
-            );
-          })}
-        </motion.div>
-
-        {/* Quick Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2 }}
-          className="mt-8 glass-card rounded-3xl p-5"
-        >
-          <h3 className="font-display font-bold text-foreground mb-4 text-center">Resumo do Campo</h3>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-nature">0</p>
-              <p className="text-xs text-muted-foreground">Registros</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-primary">0</p>
-              <p className="text-xs text-muted-foreground">Espécies</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-sun">0</p>
-              <p className="text-xs text-muted-foreground">Relatórios</p>
-            </div>
+            ))}
           </div>
         </motion.div>
       </div>

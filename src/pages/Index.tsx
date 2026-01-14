@@ -20,6 +20,7 @@ const Index = () => {
       case "home":
         return <HomeScreen onNavigate={handleNavigate} />;
       case "map":
+      case "navigate":
         return <MapScreen />;
       case "species":
         return <SpeciesScreen />;
@@ -29,6 +30,10 @@ const Index = () => {
         return <ReportsScreen />;
       case "library":
         return <LibraryScreen />;
+      case "missions":
+        return <ReportsScreen />; // Placeholder - will show reports as missions
+      case "notes":
+        return <ReportsScreen />; // Placeholder - will show notes
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
@@ -48,26 +53,7 @@ const Index = () => {
         </motion.div>
       </AnimatePresence>
       
-      {activeTab !== "home" && (
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-      )}
-      
-      {activeTab === "home" && (
-        <motion.div
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 glass-nav safe-bottom z-50"
-        >
-          <div className="flex items-center justify-around px-2 py-3">
-            <button
-              onClick={() => setActiveTab("map")}
-              className="flex-1 text-center py-2"
-            >
-              <span className="text-sm font-medium text-muted-foreground">Iniciar Exploração →</span>
-            </button>
-          </div>
-        </motion.div>
-      )}
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 };
