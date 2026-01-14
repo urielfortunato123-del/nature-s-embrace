@@ -29,10 +29,17 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Component to handle location
-function LocationButton() {
+// Wrapper component for map controls - must be child of MapContainer but renders a portal-like structure
+function MapControls() {
   const map = useMap();
   const [locating, setLocating] = useState(false);
+  const [currentLayer, setCurrentLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
+
+  const layers = {
+    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    terrain: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+  };
 
   const handleLocate = () => {
     setLocating(true);
@@ -50,30 +57,6 @@ function LocationButton() {
       setLocating(false);
       alert("Não foi possível obter sua localização");
     });
-  };
-
-  return (
-    <Button 
-      size="icon" 
-      variant="secondary" 
-      className="glass-card rounded-xl w-10 h-10"
-      onClick={handleLocate}
-      disabled={locating}
-    >
-      <LocateFixed className={`w-4 h-4 ${locating ? 'animate-pulse' : ''}`} />
-    </Button>
-  );
-}
-
-// Layer switcher component
-function LayerControl() {
-  const map = useMap();
-  const [currentLayer, setCurrentLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
-
-  const layers = {
-    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    terrain: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
   };
 
   const cycleLayer = () => {
@@ -99,17 +82,25 @@ function LayerControl() {
     }).addTo(map);
   }, [currentLayer, map]);
 
-  return (
-    <Button 
-      size="icon" 
-      variant="secondary" 
-      className="glass-card rounded-xl w-10 h-10"
-      onClick={cycleLayer}
-      title={`Camada: ${currentLayer}`}
-    >
-      <Layers className="w-4 h-4" />
-    </Button>
-  );
+  // Use a container ref to position controls absolutely within the map
+  const container = map.getContainer();
+  
+  useEffect(() => {
+    // Create control container if it doesn't exist
+    let controlContainer = container.querySelector('.custom-map-controls') as HTMLDivElement;
+    if (!controlContainer) {
+      controlContainer = document.createElement('div');
+      controlContainer.className = 'custom-map-controls';
+      controlContainer.style.cssText = 'position: absolute; right: 12px; top: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 8px;';
+      container.appendChild(controlContainer);
+    }
+    
+    return () => {
+      controlContainer?.remove();
+    };
+  }, [container]);
+
+  return null;
 }
 
 // Click handler component
@@ -120,6 +111,102 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
     },
   });
   return null;
+}
+
+// Custom control component that renders inside map container
+function CustomMapControls() {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+  const [currentLayer, setCurrentLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
+  const controlRef = useRef<HTMLDivElement>(null);
+
+  const layers: Record<string, string> = {
+    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    terrain: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+  };
+
+  const handleLocate = () => {
+    setLocating(true);
+    map.locate({ setView: true, maxZoom: 16 });
+    
+    map.once("locationfound", (e) => {
+      setLocating(false);
+      L.marker(e.latlng, { icon: customIcon })
+        .addTo(map)
+        .bindPopup("Você está aqui! 📍")
+        .openPopup();
+    });
+
+    map.once("locationerror", () => {
+      setLocating(false);
+      alert("Não foi possível obter sua localização");
+    });
+  };
+
+  const cycleLayer = () => {
+    const layerOrder: ('street' | 'satellite' | 'terrain')[] = ['street', 'satellite', 'terrain'];
+    const currentIndex = layerOrder.indexOf(currentLayer);
+    const nextLayer = layerOrder[(currentIndex + 1) % layerOrder.length];
+    setCurrentLayer(nextLayer);
+  };
+
+  useEffect(() => {
+    map.eachLayer((layer) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer);
+      }
+    });
+    
+    L.tileLayer(layers[currentLayer], {
+      attribution: currentLayer === 'satellite' 
+        ? '&copy; Esri' 
+        : currentLayer === 'terrain'
+        ? '&copy; OpenTopoMap'
+        : '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+  }, [currentLayer, map]);
+
+  // Append buttons to the map container to avoid context issues
+  useEffect(() => {
+    const container = map.getContainer();
+    const controlDiv = controlRef.current;
+    if (controlDiv && container) {
+      container.appendChild(controlDiv);
+    }
+    return () => {
+      if (controlDiv && controlDiv.parentNode) {
+        controlDiv.parentNode.removeChild(controlDiv);
+      }
+    };
+  }, [map]);
+
+  return (
+    <div 
+      ref={controlRef}
+      className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]"
+      style={{ position: 'absolute' }}
+    >
+      <Button 
+        size="icon" 
+        variant="secondary" 
+        className="glass-card rounded-xl w-10 h-10"
+        onClick={cycleLayer}
+        title={`Camada: ${currentLayer}`}
+      >
+        <Layers className="w-4 h-4" />
+      </Button>
+      <Button 
+        size="icon" 
+        variant="secondary" 
+        className="glass-card rounded-xl w-10 h-10"
+        onClick={handleLocate}
+        disabled={locating}
+      >
+        <LocateFixed className={`w-4 h-4 ${locating ? 'animate-pulse' : ''}`} />
+      </Button>
+    </div>
+  );
 }
 
 const MapScreen = () => {
@@ -290,11 +377,7 @@ const MapScreen = () => {
             <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={customIcon} />
           )}
 
-          {/* Map Controls */}
-          <div className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]">
-            <LayerControl />
-            <LocationButton />
-          </div>
+          <CustomMapControls />
         </MapContainer>
 
         {/* Tap instruction */}
