@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon, Wifi, WifiOff, RefreshCw, Trash2 } from "lucide-react";
+import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, Camera, X, Check, Image as ImageIcon, Wifi, WifiOff, RefreshCw, Trash2, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,80 +28,6 @@ const customIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41],
 });
-
-// Wrapper component for map controls - must be child of MapContainer but renders a portal-like structure
-function MapControls() {
-  const map = useMap();
-  const [locating, setLocating] = useState(false);
-  const [currentLayer, setCurrentLayer] = useState<'street' | 'satellite' | 'terrain'>('street');
-
-  const layers = {
-    street: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    satellite: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    terrain: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-  };
-
-  const handleLocate = () => {
-    setLocating(true);
-    map.locate({ setView: true, maxZoom: 16 });
-    
-    map.once("locationfound", (e) => {
-      setLocating(false);
-      L.marker(e.latlng, { icon: customIcon })
-        .addTo(map)
-        .bindPopup("Você está aqui! 📍")
-        .openPopup();
-    });
-
-    map.once("locationerror", () => {
-      setLocating(false);
-      alert("Não foi possível obter sua localização");
-    });
-  };
-
-  const cycleLayer = () => {
-    const layerOrder: ('street' | 'satellite' | 'terrain')[] = ['street', 'satellite', 'terrain'];
-    const currentIndex = layerOrder.indexOf(currentLayer);
-    const nextLayer = layerOrder[(currentIndex + 1) % layerOrder.length];
-    setCurrentLayer(nextLayer);
-  };
-
-  useEffect(() => {
-    map.eachLayer((layer) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer);
-      }
-    });
-    
-    L.tileLayer(layers[currentLayer], {
-      attribution: currentLayer === 'satellite' 
-        ? '&copy; Esri' 
-        : currentLayer === 'terrain'
-        ? '&copy; OpenTopoMap'
-        : '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-  }, [currentLayer, map]);
-
-  // Use a container ref to position controls absolutely within the map
-  const container = map.getContainer();
-  
-  useEffect(() => {
-    // Create control container if it doesn't exist
-    let controlContainer = container.querySelector('.custom-map-controls') as HTMLDivElement;
-    if (!controlContainer) {
-      controlContainer = document.createElement('div');
-      controlContainer.className = 'custom-map-controls';
-      controlContainer.style.cssText = 'position: absolute; right: 12px; top: 12px; z-index: 1000; display: flex; flex-direction: column; gap: 8px;';
-      container.appendChild(controlContainer);
-    }
-    
-    return () => {
-      controlContainer?.remove();
-    };
-  }, [container]);
-
-  return null;
-}
 
 // Click handler component
 function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
@@ -187,24 +113,24 @@ function CustomMapControls() {
       className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]"
       style={{ position: 'absolute' }}
     >
-      <Button 
-        size="icon" 
-        variant="secondary" 
-        className="glass-card rounded-xl w-10 h-10"
+      <motion.button 
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl shadow-lg flex items-center justify-center"
         onClick={cycleLayer}
         title={`Camada: ${currentLayer}`}
       >
-        <Layers className="w-4 h-4" />
-      </Button>
-      <Button 
-        size="icon" 
-        variant="secondary" 
-        className="glass-card rounded-xl w-10 h-10"
+        <Layers className="w-5 h-5 text-violet-500" />
+      </motion.button>
+      <motion.button 
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        className="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl shadow-lg flex items-center justify-center"
         onClick={handleLocate}
         disabled={locating}
       >
-        <LocateFixed className={`w-4 h-4 ${locating ? 'animate-pulse' : ''}`} />
-      </Button>
+        <LocateFixed className={`w-5 h-5 text-emerald-500 ${locating ? 'animate-pulse' : ''}`} />
+      </motion.button>
     </div>
   );
 }
@@ -280,56 +206,75 @@ const MapScreen = () => {
   };
 
   return (
-    <div className="min-h-screen pb-24 safe-top">
+    <div className="min-h-screen pb-28 bg-gradient-to-b from-sky-50 to-emerald-50/50 relative">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-[1000] glass-nav px-4 py-4"
+        className="px-5 pt-6 pb-4 relative z-10"
       >
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-display font-bold text-foreground">Mapa de Campo</h1>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
+              🗺️ Mapa de Campo
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">Registre avistamentos</p>
+          </div>
           <div className="flex items-center gap-2">
             {/* Online/Offline Status */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-              isOnline ? 'bg-nature/20 text-nature-dark' : 'bg-destructive/20 text-destructive'
-            }`}>
-              {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-md ${
+                isOnline 
+                  ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white' 
+                  : 'bg-gradient-to-r from-rose-400 to-red-500 text-white'
+              }`}
+            >
+              {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               {isOnline ? 'Online' : 'Offline'}
-            </div>
+            </motion.div>
             
             {/* Sync Button */}
             {pendingSync > 0 && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 px-2 text-xs gap-1 rounded-full"
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/80 backdrop-blur-xl shadow-md text-foreground"
                 onClick={handleSync}
                 disabled={!isOnline || isSyncing}
               >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                 {pendingSync}
-              </Button>
+              </motion.button>
             )}
           </div>
         </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="relative"
+        >
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
+            <Search className="w-5 h-5 text-white" />
+          </div>
           <Input 
             placeholder="Buscar localização..." 
-            className="pl-10 bg-white/60 border-white/40 rounded-2xl"
+            className="pl-16 pr-4 h-14 bg-white/80 backdrop-blur-xl border-white/40 rounded-2xl text-base shadow-lg"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </div>
+        </motion.div>
       </motion.div>
 
       {/* Map */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative mx-4 mt-4 h-[50vh] rounded-3xl overflow-hidden shadow-lg"
+        className="relative mx-5 h-[55vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50"
       >
         <MapContainer
           center={defaultCenter}
@@ -381,11 +326,50 @@ const MapScreen = () => {
         </MapContainer>
 
         {/* Tap instruction */}
-        <div className="absolute bottom-3 left-3 right-3 z-[1000] pointer-events-none">
-          <div className="glass-card rounded-xl px-3 py-2 text-center">
-            <p className="text-xs text-muted-foreground">
-              👆 Toque no mapa para registrar avistamento
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none"
+        >
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl px-4 py-3 text-center shadow-lg border border-white/50">
+            <p className="text-sm text-foreground font-medium flex items-center justify-center gap-2">
+              <Compass className="w-4 h-4 text-emerald-500" />
+              Toque no mapa para registrar avistamento
             </p>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Stats */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="px-5 mt-5"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-md">
+                <MapPin className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{sightings.length}</p>
+                <p className="text-xs text-muted-foreground">Avistamentos</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-md">
+                <Navigation className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{new Set(sightings.map(s => s.species)).size}</p>
+                <p className="text-xs text-muted-foreground">Espécies</p>
+              </div>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -397,7 +381,7 @@ const MapScreen = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[2000] bg-black/50 flex items-end justify-center p-4"
+            className="fixed inset-0 z-[2000] bg-black/60 backdrop-blur-sm flex items-end justify-center"
             onClick={handleCancel}
           >
             <motion.div
@@ -405,27 +389,32 @@ const MapScreen = () => {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-md glass-card rounded-3xl p-6"
+              className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-t-3xl p-6 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display font-bold text-lg text-foreground">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="font-display font-bold text-xl text-foreground flex items-center gap-2">
                   🦎 Novo Avistamento
                 </h2>
-                <Button size="icon" variant="ghost" onClick={handleCancel}>
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCancel}
+                  className="w-10 h-10 rounded-xl bg-muted/50 flex items-center justify-center"
+                >
                   <X className="w-5 h-5" />
-                </Button>
+                </motion.button>
               </div>
 
-              <div className="text-xs text-muted-foreground mb-4 flex items-center gap-2">
-                <MapPin className="w-3 h-3" />
-                {pendingLocation.lat.toFixed(5)}, {pendingLocation.lng.toFixed(5)}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5 bg-muted/30 rounded-xl px-3 py-2">
+                <MapPin className="w-4 h-4 text-emerald-500" />
+                <span>{pendingLocation.lat.toFixed(5)}, {pendingLocation.lng.toFixed(5)}</span>
               </div>
 
               <div className="space-y-4">
                 {/* Species Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="species" className="text-foreground">
+                  <Label htmlFor="species" className="text-foreground font-semibold">
                     Nome da Espécie *
                   </Label>
                   <Input
@@ -433,13 +422,13 @@ const MapScreen = () => {
                     placeholder="Ex: Capivara, Tucano, Jaguatirica..."
                     value={formData.species}
                     onChange={(e) => setFormData(prev => ({ ...prev, species: e.target.value }))}
-                    className="bg-white/60 border-white/40 rounded-xl"
+                    className="bg-white/80 border-white/40 rounded-xl h-12"
                   />
                 </div>
 
                 {/* Photo Upload */}
                 <div className="space-y-2">
-                  <Label className="text-foreground">Foto do Avistamento</Label>
+                  <Label className="text-foreground font-semibold">Foto do Avistamento</Label>
                   <input
                     type="file"
                     accept="image/*"
@@ -454,178 +443,74 @@ const MapScreen = () => {
                       <img
                         src={formData.photo}
                         alt="Preview"
-                        className="w-full h-32 object-cover rounded-xl"
+                        className="w-full h-36 object-cover rounded-2xl"
                       />
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute top-2 right-2 w-8 h-8 rounded-full"
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg"
                         onClick={() => setFormData(prev => ({ ...prev, photo: null }))}
                       >
                         <X className="w-4 h-4" />
-                      </Button>
+                      </motion.button>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full h-24 rounded-xl border-dashed border-2 flex flex-col gap-2"
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-muted/20"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Camera className="w-6 h-6 text-primary" />
+                      <Camera className="w-8 h-8 text-emerald-500" />
                       <span className="text-sm text-muted-foreground">
                         Tirar foto ou escolher da galeria
                       </span>
-                    </Button>
+                    </motion.button>
                   )}
                 </div>
 
                 {/* Observations */}
                 <div className="space-y-2">
-                  <Label htmlFor="observations" className="text-foreground">
+                  <Label htmlFor="observations" className="text-foreground font-semibold">
                     Observações
                   </Label>
                   <Textarea
                     id="observations"
-                    placeholder="Comportamento, habitat, quantidade de indivíduos..."
+                    placeholder="Comportamento, habitat, quantidade..."
                     value={formData.observations}
                     onChange={(e) => setFormData(prev => ({ ...prev, observations: e.target.value }))}
-                    className="bg-white/60 border-white/40 rounded-xl min-h-[80px]"
+                    className="bg-white/80 border-white/40 rounded-xl resize-none"
+                    rows={3}
                   />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-xl"
-                    onClick={handleCancel}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    className="flex-1 rounded-xl bg-gradient-to-r from-nature to-nature-dark text-white"
-                    onClick={handleSubmit}
-                    disabled={!formData.species.trim()}
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Salvar
-                  </Button>
-                </div>
+                {/* Submit */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleSubmit}
+                  disabled={!formData.species.trim()}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Check className="w-5 h-5" />
+                  Salvar Avistamento
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="px-4 mt-6"
-      >
-        <h2 className="font-display font-bold text-foreground mb-3">Ações Rápidas</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Button 
-            variant="outline" 
-            className="glass-card border-white/30 rounded-2xl h-auto py-4 flex flex-col gap-2"
-            onClick={() => {
-              navigator.geolocation.getCurrentPosition(
-                (pos) => handleMapClick(pos.coords.latitude, pos.coords.longitude),
-                () => alert("Não foi possível obter localização")
-              );
-            }}
-          >
-            <MapPin className="w-5 h-5 text-primary" />
-            <span className="text-sm">Registrar Aqui</span>
-          </Button>
-          <Button 
-            variant="outline" 
-            className="glass-card border-white/30 rounded-2xl h-auto py-4 flex flex-col gap-2"
-          >
-            <Navigation className="w-5 h-5 text-nature" />
-            <span className="text-sm">Minha Posição</span>
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* Recent Sightings */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="px-4 mt-6"
-      >
-        <h2 className="font-display font-bold text-foreground mb-3">
-          Avistamentos ({sightings.length})
-        </h2>
-        <div className="glass-card rounded-3xl p-4">
-          {sightings.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-muted-foreground">
-              <div className="text-center">
-                <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhum avistamento registrado</p>
-                <p className="text-xs mt-1">Toque no mapa para adicionar</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-48 overflow-y-auto">
-              {sightings.map((sighting) => (
-                <div key={sighting.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/30 relative">
-                  {/* Sync indicator */}
-                  {!sighting.synced && (
-                    <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400" title="Pendente de sincronização" />
-                  )}
-                  {sighting.photo ? (
-                    <img
-                      src={sighting.photo}
-                      alt={sighting.species}
-                      className="w-12 h-12 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <ImageIcon className="w-5 h-5 text-primary" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{sighting.species}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {sighting.observations || "Sem observações"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {sighting.timestamp.toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                    onClick={() => removeSighting(sighting.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </motion.div>
-
       {/* FAB */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.6, type: "spring" }}
-        className="floating-action"
+        transition={{ delay: 0.5, type: "spring" }}
+        whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) => handleMapClick(pos.coords.latitude, pos.coords.longitude),
-            () => alert("Ative a localização para registrar avistamento")
-          );
-        }}
+        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center text-white shadow-xl z-50"
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-7 h-7" />
       </motion.button>
     </div>
   );
