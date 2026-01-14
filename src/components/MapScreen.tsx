@@ -1,26 +1,40 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, RefreshCw, Compass } from "lucide-react";
+import {
+  MapPin,
+  Layers,
+  Search,
+  LocateFixed,
+  X,
+  Check,
+  Wifi,
+  WifiOff,
+  Compass,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Fix for default marker icons in Leaflet with Vite
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-// Custom marker icon with nature theme
 const customIcon = new L.Icon({
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -37,40 +51,29 @@ interface Sighting {
   timestamp: Date;
 }
 
-// Map click handler component
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click: (e) => {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-// Component to capture map instance
-function MapRefHandler({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
-  const map = useMap();
-  useEffect(() => {
-    mapRef.current = map;
-  }, [map, mapRef]);
-  return null;
-}
-
 const MapScreen = () => {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [formData, setFormData] = useState({
     species: "",
     observations: "",
     photo: null as string | null,
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
 
-  const defaultCenter: [number, number] = [-14.235, -51.9253];
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mapDivRef = useRef<HTMLDivElement | null>(null);
+
+  const mapRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const pendingMarkerRef = useRef<L.Marker | null>(null);
+
+  const defaultCenter = useMemo(() => ({ lat: -14.235, lng: -51.9253 }), []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -85,21 +88,107 @@ const MapScreen = () => {
     };
   }, []);
 
-  const handleMapClick = (lat: number, lng: number) => {
-    setPendingLocation({ lat, lng });
-    setShowForm(true);
-    setFormData({ species: "", observations: "", photo: null });
-  };
+  // Init Leaflet map (vanilla) to avoid react-leaflet context runtime error
+  useEffect(() => {
+    if (!mapDivRef.current) return;
+    if (mapRef.current) return;
+
+    const map = L.map(mapDivRef.current, {
+      zoomControl: false,
+      attributionControl: true,
+    }).setView([defaultCenter.lat, defaultCenter.lng], 4);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+    }).addTo(map);
+
+    const markersLayer = L.layerGroup().addTo(map);
+    markersLayerRef.current = markersLayer;
+
+    map.on("click", (e: L.LeafletMouseEvent) => {
+      setPendingLocation({ lat: e.latlng.lat, lng: e.latlng.lng });
+      setShowForm(true);
+      setFormData({ species: "", observations: "", photo: null });
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      map.off();
+      map.remove();
+      mapRef.current = null;
+      markersLayerRef.current = null;
+      pendingMarkerRef.current = null;
+    };
+  }, [defaultCenter]);
+
+  // Render markers
+  useEffect(() => {
+    const markersLayer = markersLayerRef.current;
+    if (!markersLayer) return;
+
+    markersLayer.clearLayers();
+
+    sightings.forEach((sighting) => {
+      const marker = L.marker([sighting.lat, sighting.lng], { icon: customIcon });
+
+      const photoHtml = sighting.photo
+        ? `<img src="${sighting.photo}" alt="${escapeHtml(
+            sighting.species
+          )}" style="width:100%;height:96px;object-fit:cover;border-radius:10px;margin-bottom:8px;" />`
+        : "";
+
+      const obsHtml = sighting.observations
+        ? `<p style="font-size:12px;color:#4b5563;margin-top:4px;">${escapeHtml(
+            sighting.observations
+          )}</p>`
+        : "";
+
+      const html = `
+        <div style="min-width:200px">
+          ${photoHtml}
+          <strong style="font-size:14px;display:block">${escapeHtml(
+            sighting.species
+          )}</strong>
+          ${obsHtml}
+          <span style="font-size:12px;color:#9ca3af;display:block;margin-top:8px">📍 ${sighting.lat.toFixed(
+            4
+          )}, ${sighting.lng.toFixed(4)}</span>
+        </div>
+      `;
+
+      marker.bindPopup(html);
+      marker.addTo(markersLayer);
+    });
+  }, [sightings]);
+
+  // Pending marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (pendingMarkerRef.current) {
+      pendingMarkerRef.current.remove();
+      pendingMarkerRef.current = null;
+    }
+
+    if (pendingLocation) {
+      pendingMarkerRef.current = L.marker(
+        [pendingLocation.lat, pendingLocation.lng],
+        { icon: customIcon }
+      ).addTo(map);
+    }
+  }, [pendingLocation]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, photo: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({ ...prev, photo: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = () => {
@@ -128,9 +217,10 @@ const MapScreen = () => {
   };
 
   const handleLocateClick = () => {
-    if (mapRef.current) {
-      mapRef.current.locate({ setView: true, maxZoom: 16 });
-    }
+    const map = mapRef.current;
+    if (!map) return;
+
+    map.locate({ setView: true, maxZoom: 16 });
   };
 
   return (
@@ -146,7 +236,9 @@ const MapScreen = () => {
             <h1 className="text-2xl font-display font-bold text-foreground flex items-center gap-2">
               🗺️ Mapa de Campo
             </h1>
-            <p className="text-sm text-muted-foreground mt-1">Registre avistamentos</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Registre avistamentos
+            </p>
           </div>
           <motion.div
             whileHover={{ scale: 1.05 }}
@@ -156,7 +248,11 @@ const MapScreen = () => {
                 : "bg-gradient-to-r from-rose-400 to-red-500 shadow-rose-500/30 text-white"
             }`}
           >
-            {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+            {isOnline ? (
+              <Wifi className="w-3.5 h-3.5" />
+            ) : (
+              <WifiOff className="w-3.5 h-3.5" />
+            )}
             {isOnline ? "Online" : "Offline"}
           </motion.div>
         </div>
@@ -184,44 +280,7 @@ const MapScreen = () => {
         transition={{ delay: 0.2 }}
         className="relative mx-5 h-[55vh] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/50 dark:border-border/50"
       >
-        <MapContainer
-          center={defaultCenter}
-          zoom={4}
-          className="w-full h-full rounded-3xl"
-          zoomControl={false}
-        >
-          <MapRefHandler mapRef={mapRef} />
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <MapClickHandler onMapClick={handleMapClick} />
-          {sightings.map((sighting) => (
-            <Marker key={sighting.id} position={[sighting.lat, sighting.lng]} icon={customIcon}>
-              <Popup>
-                <div className="min-w-[200px]">
-                  {sighting.photo && (
-                    <img
-                      src={sighting.photo}
-                      alt={sighting.species}
-                      className="w-full h-24 object-cover rounded-lg mb-2"
-                    />
-                  )}
-                  <strong className="text-sm block">{sighting.species}</strong>
-                  {sighting.observations && (
-                    <p className="text-xs text-gray-600 mt-1">{sighting.observations}</p>
-                  )}
-                  <span className="text-xs text-gray-400 block mt-2">
-                    📍 {sighting.lat.toFixed(4)}, {sighting.lng.toFixed(4)}
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-          {pendingLocation && (
-            <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={customIcon} />
-          )}
-        </MapContainer>
+        <div ref={mapDivRef} className="w-full h-full rounded-3xl" />
 
         {/* Map Controls */}
         <div className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]">
@@ -275,7 +334,9 @@ const MapScreen = () => {
             <div className="relative z-10 flex items-center gap-3">
               <div className="text-3xl">📍</div>
               <div>
-                <p className="text-2xl font-bold text-white">{sightings.length}</p>
+                <p className="text-2xl font-bold text-white">
+                  {sightings.length}
+                </p>
                 <p className="text-xs text-white/80">Avistamentos</p>
               </div>
             </div>
@@ -288,7 +349,9 @@ const MapScreen = () => {
             <div className="relative z-10 flex items-center gap-3">
               <div className="text-3xl">🦜</div>
               <div>
-                <p className="text-2xl font-bold text-white">{new Set(sightings.map((s) => s.species)).size}</p>
+                <p className="text-2xl font-bold text-white">
+                  {new Set(sightings.map((s) => s.species)).size}
+                </p>
                 <p className="text-xs text-white/80">Espécies</p>
               </div>
             </div>
@@ -331,7 +394,9 @@ const MapScreen = () => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5 bg-gradient-to-r from-sky-400/20 to-blue-500/20 rounded-xl px-3 py-2">
                 <MapPin className="w-4 h-4 text-sky-500" />
                 <span>
-                  {pendingLocation.lat.toFixed(5)}, {pendingLocation.lng.toFixed(5)}
+                  {pendingLocation.lat.toFixed(5)},
+                  {" "}
+                  {pendingLocation.lng.toFixed(5)}
                 </span>
               </div>
 
@@ -344,13 +409,20 @@ const MapScreen = () => {
                     id="species"
                     placeholder="Ex: Capivara, Tucano, Jaguatirica..."
                     value={formData.species}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, species: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        species: e.target.value,
+                      }))
+                    }
                     className="bg-white/80 dark:bg-muted/50 border-white/40 dark:border-border/40 rounded-xl h-12"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-foreground font-semibold">Foto do Avistamento</Label>
+                  <Label className="text-foreground font-semibold">
+                    Foto do Avistamento
+                  </Label>
                   <input
                     type="file"
                     accept="image/*"
@@ -362,12 +434,18 @@ const MapScreen = () => {
 
                   {formData.photo ? (
                     <div className="relative">
-                      <img src={formData.photo} alt="Preview" className="w-full h-36 object-cover rounded-2xl" />
+                      <img
+                        src={formData.photo}
+                        alt="Preview"
+                        className="w-full h-36 object-cover rounded-2xl"
+                      />
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                         className="absolute top-2 right-2 w-8 h-8 rounded-full bg-gradient-to-br from-rose-400 to-red-500 text-white flex items-center justify-center shadow-lg"
-                        onClick={() => setFormData((prev) => ({ ...prev, photo: null }))}
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, photo: null }))
+                        }
                       >
                         <X className="w-4 h-4" />
                       </motion.button>
@@ -380,7 +458,9 @@ const MapScreen = () => {
                       className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sky-400/10 to-blue-500/10"
                     >
                       <span className="text-3xl">📷</span>
-                      <span className="text-sm text-muted-foreground font-medium">Adicionar foto</span>
+                      <span className="text-sm text-muted-foreground font-medium">
+                        Adicionar foto
+                      </span>
                     </motion.button>
                   )}
                 </div>
@@ -393,7 +473,12 @@ const MapScreen = () => {
                     id="observations"
                     placeholder="Comportamento, habitat, quantidade..."
                     value={formData.observations}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        observations: e.target.value,
+                      }))
+                    }
                     className="bg-white/80 dark:bg-muted/50 border-white/40 dark:border-border/40 rounded-xl resize-none"
                     rows={3}
                   />
@@ -427,5 +512,14 @@ const MapScreen = () => {
     </div>
   );
 };
+
+function escapeHtml(input: string) {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 export default MapScreen;
