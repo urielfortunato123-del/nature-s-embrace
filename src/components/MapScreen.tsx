@@ -11,6 +11,9 @@ import {
   WifiOff,
   Compass,
   Loader2,
+  Download,
+  FileJson,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -375,6 +378,53 @@ const MapScreen = () => {
     map.locate({ setView: true, maxZoom: 16 });
   };
 
+  const exportToJSON = () => {
+    if (sightings.length === 0) return;
+
+    const exportData = sightings.map(({ photo, ...rest }) => ({
+      ...rest,
+      hasPhoto: !!photo,
+    }));
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bionatura-avistamentos-${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToCSV = () => {
+    if (sightings.length === 0) return;
+
+    const headers = ["ID", "Espécie", "Latitude", "Longitude", "Observações", "Data/Hora", "Tem Foto"];
+    const rows = sightings.map((s) => [
+      s.id,
+      `"${s.species.replace(/"/g, '""')}"`,
+      s.lat.toFixed(6),
+      s.lng.toFixed(6),
+      `"${(s.observations || "").replace(/"/g, '""')}"`,
+      new Date(s.timestamp).toLocaleString("pt-BR"),
+      s.photo ? "Sim" : "Não",
+    ]);
+
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `bionatura-avistamentos-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen pb-28 bg-gradient-to-b from-sky-50 to-emerald-50/50 dark:from-background dark:to-background relative">
       {/* Header */}
@@ -579,6 +629,35 @@ const MapScreen = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* Export Buttons */}
+        {sightings.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="flex gap-2 mt-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={exportToJSON}
+              className="flex-1 py-3 px-4 bg-white/90 dark:bg-card/90 backdrop-blur-md rounded-2xl shadow-lg flex items-center justify-center gap-2 text-foreground font-medium border border-white/40 dark:border-border/40"
+            >
+              <FileJson className="w-4 h-4 text-blue-500" />
+              <span className="text-sm">Exportar JSON</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={exportToCSV}
+              className="flex-1 py-3 px-4 bg-white/90 dark:bg-card/90 backdrop-blur-md rounded-2xl shadow-lg flex items-center justify-center gap-2 text-foreground font-medium border border-white/40 dark:border-border/40"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-green-500" />
+              <span className="text-sm">Exportar CSV</span>
+            </motion.button>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Sighting Form Modal */}
