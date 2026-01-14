@@ -2,95 +2,133 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* BioNatura - Cores da Natureza */
+    --background: 120 25% 97%;
+    --foreground: 150 30% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 150 30% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 150 30% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Rosa suave */
+    --primary: 340 65% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Lilás */
+    --secondary: 270 45% 70%;
+    --secondary-foreground: 270 60% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Verde natureza */
+    --nature: 140 50% 45%;
+    --nature-foreground: 0 0% 100%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Amarelo sol */
+    --sun: 45 90% 60%;
+    --sun-foreground: 45 80% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Azul céu claro */
+    --sky: 200 70% 70%;
+    --sky-foreground: 200 80% 15%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --muted: 120 15% 92%;
+    --muted-foreground: 150 15% 45%;
 
-    --radius: 0.5rem;
+    --accent: 270 45% 92%;
+    --accent-foreground: 270 60% 30%;
 
-    --sidebar-background: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --border: 140 20% 88%;
+    --input: 140 20% 88%;
+    --ring: 340 65% 65%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --radius: 1rem;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Glass effect */
+    --glass: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.3;
+    
+    /* Gradients */
+    --gradient-nature: linear-gradient(135deg, hsl(140 50% 45%), hsl(160 45% 50%));
+    --gradient-sunset: linear-gradient(135deg, hsl(340 65% 65%), hsl(270 45% 70%));
+    --gradient-sky: linear-gradient(135deg, hsl(200 70% 70%), hsl(180 60% 75%));
+    --gradient-hero: linear-gradient(180deg, hsl(120 25% 97% / 0.1), hsl(140 30% 90% / 0.8));
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -5px hsl(140 30% 30% / 0.15);
+    --shadow-glow: 0 0 30px hsl(340 65% 65% / 0.3);
+    --shadow-nature: 0 8px 32px -8px hsl(140 50% 30% / 0.25);
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    /* Font */
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Nunito', sans-serif;
 
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 120 25% 97%;
+    --sidebar-foreground: 150 30% 15%;
+    --sidebar-primary: 340 65% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 45% 92%;
+    --sidebar-accent-foreground: 270 60% 30%;
+    --sidebar-border: 140 20% 88%;
+    --sidebar-ring: 340 65% 65%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 150 30% 8%;
+    --foreground: 120 20% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 150 25% 12%;
+    --card-foreground: 120 20% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 150 25% 12%;
+    --popover-foreground: 120 20% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 340 60% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 270 40% 55%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --nature: 140 45% 40%;
+    --nature-foreground: 0 0% 100%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --sun: 45 85% 55%;
+    --sun-foreground: 45 80% 10%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --sky: 200 60% 55%;
+    --sky-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --muted: 150 20% 18%;
+    --muted-foreground: 120 15% 65%;
+
+    --accent: 270 30% 25%;
+    --accent-foreground: 270 40% 85%;
+
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 20% 20%;
+    --input: 150 20% 20%;
+    --ring: 340 60% 60%;
+
+    --glass: 150 30% 12% / 0.8;
+    --glass-border: 150 20% 30% / 0.4;
+
+    --sidebar-background: 150 30% 8%;
+    --sidebar-foreground: 120 20% 95%;
+    --sidebar-primary: 340 60% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 270 30% 25%;
+    --sidebar-accent-foreground: 270 40% 85%;
+    --sidebar-border: 150 20% 20%;
+    --sidebar-ring: 340 60% 60%;
   }
 }
 
@@ -99,7 +137,90 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-family: var(--font-body);
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/30 shadow-lg;
+  }
+
+  .glass-nav {
+    @apply bg-white/80 backdrop-blur-2xl border-t border-white/40;
+  }
+
+  .gradient-nature {
+    background: var(--gradient-nature);
+  }
+
+  .gradient-sunset {
+    background: var(--gradient-sunset);
+  }
+
+  .gradient-sky {
+    background: var(--gradient-sky);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background: var(--gradient-sunset);
+  }
+
+  .btn-nature {
+    @apply px-6 py-3 rounded-2xl font-semibold text-white transition-all duration-300;
+    background: var(--gradient-nature);
+    box-shadow: var(--shadow-nature);
+  }
+
+  .btn-nature:hover {
+    @apply scale-105;
+    box-shadow: var(--shadow-glow);
+  }
+
+  .floating-action {
+    @apply fixed bottom-24 right-4 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl z-50;
+    background: var(--gradient-sunset);
+  }
+
+  .nav-item {
+    @apply flex flex-col items-center justify-center py-2 px-3 rounded-2xl transition-all duration-300;
+  }
+
+  .nav-item.active {
+    @apply bg-primary/15 text-primary;
+  }
+
+  .nav-item:not(.active) {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  .species-card {
+    @apply glass-card rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.02];
+    box-shadow: var(--shadow-soft);
+  }
+
+  .species-card:hover {
+    box-shadow: var(--shadow-nature);
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 1rem);
   }
 }
