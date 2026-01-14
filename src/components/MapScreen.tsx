@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Navigation, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, RefreshCw, Compass } from "lucide-react";
+import { MapPin, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, RefreshCw, Compass } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -28,39 +28,33 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-// Click handler component
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+interface MapEventsProps {
+  onMapClick: (lat: number, lng: number) => void;
+  onLocate: (lat: number, lng: number) => void;
+}
+
+// Combined map events handler - single component for all map interactions
+function MapEvents({ onMapClick, onLocate }: MapEventsProps) {
+  const map = useMap();
+  
   useMapEvents({
     click: (e) => {
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
-  return null;
-}
 
-// Map controls component - simplified version without DOM manipulation
-function MapControls({ onLocate, onLayerChange }: { onLocate: () => void; onLayerChange: () => void }) {
-  return null; // Controls are now rendered outside MapContainer
-}
-
-// Location handler component
-function LocationHandler({ onLocationFound }: { onLocationFound: (lat: number, lng: number) => void }) {
-  const map = useMap();
-  
-  const handleLocate = () => {
+  // Expose locate function globally
+  (window as any).__mapLocate = () => {
     map.locate({ setView: true, maxZoom: 16 });
     
     map.once("locationfound", (e) => {
-      onLocationFound(e.latlng.lat, e.latlng.lng);
+      onLocate(e.latlng.lat, e.latlng.lng);
     });
 
     map.once("locationerror", () => {
       alert("Não foi possível obter sua localização");
     });
   };
-
-  // Expose handleLocate through a custom event
-  (window as any).__mapLocate = handleLocate;
   
   return null;
 }
@@ -68,7 +62,6 @@ function LocationHandler({ onLocationFound }: { onLocationFound: (lat: number, l
 const MapScreen = () => {
   const { 
     sightings, 
-    isLoading, 
     isOnline, 
     pendingSync, 
     addSighting, 
@@ -157,7 +150,6 @@ const MapScreen = () => {
             <p className="text-sm text-muted-foreground mt-1">Registre avistamentos</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Online/Offline Status */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-lg ${
@@ -170,7 +162,6 @@ const MapScreen = () => {
               {isOnline ? 'Online' : 'Offline'}
             </motion.div>
             
-            {/* Sync Button */}
             {pendingSync > 0 && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -186,7 +177,6 @@ const MapScreen = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -217,14 +207,13 @@ const MapScreen = () => {
           zoomControl={false}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          
-          <MapClickHandler onMapClick={handleMapClick} />
-          <LocationHandler onLocationFound={(lat, lng) => setUserLocation({ lat, lng })} />
-          
-          {/* Render saved sightings */}
+          <MapEvents 
+            onMapClick={handleMapClick} 
+            onLocate={(lat, lng) => setUserLocation({ lat, lng })} 
+          />
           {sightings.map((sighting) => (
             <Marker key={sighting.id} position={[sighting.lat, sighting.lng]} icon={customIcon}>
               <Popup>
@@ -243,20 +232,13 @@ const MapScreen = () => {
                   <span className="text-xs text-gray-400 block mt-2">
                     📍 {sighting.lat.toFixed(4)}, {sighting.lng.toFixed(4)}
                   </span>
-                  <span className="text-xs text-gray-400 block">
-                    🕐 {sighting.timestamp.toLocaleString('pt-BR')}
-                  </span>
                 </div>
               </Popup>
             </Marker>
           ))}
-
-          {/* Pending marker */}
           {pendingLocation && (
             <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={customIcon} />
           )}
-
-          {/* User location marker */}
           {userLocation && (
             <Marker position={[userLocation.lat, userLocation.lng]} icon={customIcon}>
               <Popup>Você está aqui! 📍</Popup>
@@ -264,13 +246,12 @@ const MapScreen = () => {
           )}
         </MapContainer>
 
-        {/* Map Controls - Outside MapContainer */}
+        {/* Map Controls */}
         <div className="absolute right-3 top-3 flex flex-col gap-2 z-[1000]">
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30 flex items-center justify-center"
-            onClick={() => {}}
             title="Camadas"
           >
             <Layers className="w-5 h-5 text-white" />
@@ -376,7 +357,6 @@ const MapScreen = () => {
               </div>
 
               <div className="space-y-4">
-                {/* Species Name */}
                 <div className="space-y-2">
                   <Label htmlFor="species" className="text-foreground font-semibold">
                     Nome da Espécie *
@@ -390,7 +370,6 @@ const MapScreen = () => {
                   />
                 </div>
 
-                {/* Photo Upload */}
                 <div className="space-y-2">
                   <Label className="text-foreground font-semibold">Foto do Avistamento</Label>
                   <input
@@ -404,11 +383,7 @@ const MapScreen = () => {
                   
                   {formData.photo ? (
                     <div className="relative">
-                      <img
-                        src={formData.photo}
-                        alt="Preview"
-                        className="w-full h-36 object-cover rounded-2xl"
-                      />
+                      <img src={formData.photo} alt="Preview" className="w-full h-36 object-cover rounded-2xl" />
                       <motion.button
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
@@ -423,7 +398,7 @@ const MapScreen = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sky-400/10 to-blue-500/10 hover:from-sky-400/20 hover:to-blue-500/20 transition-colors"
+                      className="w-full h-28 rounded-2xl border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-sky-400/10 to-blue-500/10"
                     >
                       <span className="text-3xl">📷</span>
                       <span className="text-sm text-muted-foreground font-medium">Adicionar foto</span>
@@ -431,11 +406,8 @@ const MapScreen = () => {
                   )}
                 </div>
 
-                {/* Observations */}
                 <div className="space-y-2">
-                  <Label htmlFor="observations" className="text-foreground font-semibold">
-                    Observações
-                  </Label>
+                  <Label htmlFor="observations" className="text-foreground font-semibold">Observações</Label>
                   <Textarea
                     id="observations"
                     placeholder="Comportamento, habitat, quantidade..."
@@ -446,7 +418,6 @@ const MapScreen = () => {
                   />
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
