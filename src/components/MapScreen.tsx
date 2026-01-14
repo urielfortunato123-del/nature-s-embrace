@@ -49,8 +49,10 @@ interface Sighting {
   species: string;
   observations: string;
   photo: string | null;
-  timestamp: Date;
+  timestamp: string; // ISO string for localStorage serialization
 }
+
+const SIGHTINGS_STORAGE_KEY = "bionatura_map_sightings";
 
 interface GeoSearchResult {
   place_id: number;
@@ -101,7 +103,18 @@ const mapLayers: MapLayer[] = [
 ];
 
 const MapScreen = () => {
-  const [sightings, setSightings] = useState<Sighting[]>([]);
+  // Load sightings from localStorage on initial render
+  const [sightings, setSightings] = useState<Sighting[]>(() => {
+    try {
+      const stored = localStorage.getItem(SIGHTINGS_STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored) as Sighting[];
+      }
+    } catch (error) {
+      console.error("Error loading sightings from localStorage:", error);
+    }
+    return [];
+  });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GeoSearchResult[]>([]);
@@ -184,6 +197,15 @@ const MapScreen = () => {
     setShowResults(false);
     setSearchResults([]);
   };
+
+  // Save sightings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIGHTINGS_STORAGE_KEY, JSON.stringify(sightings));
+    } catch (error) {
+      console.error("Error saving sightings to localStorage:", error);
+    }
+  }, [sightings]);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -331,7 +353,7 @@ const MapScreen = () => {
       species: formData.species.trim(),
       observations: formData.observations.trim(),
       photo: formData.photo,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
 
     setSightings((prev) => [...prev, newSighting]);
