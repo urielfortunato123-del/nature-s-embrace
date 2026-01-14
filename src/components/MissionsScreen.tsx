@@ -1,16 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Check, Target, Flag, Clock, Star, Trash2 } from "lucide-react";
+import { Plus, Check, Trash2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useMissions } from "@/hooks/useMissions";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
-
-interface Mission {
-  id: string;
-  title: string;
-  completed: boolean;
-  priority: 'low' | 'medium' | 'high';
-  createdAt: Date;
-}
 
 const priorityConfig = {
   low: { gradient: "from-emerald-400 to-green-500", shadow: "shadow-emerald-500/30", icon: "🌱" },
@@ -26,37 +21,28 @@ const quickMissions = [
 ];
 
 const MissionsScreen = () => {
-  const [missions, setMissions] = useState<Mission[]>([]);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { missions, loading, addMission, toggleMission, deleteMission } = useMissions();
   const [newMission, setNewMission] = useState("");
-  const [selectedPriority, setSelectedPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [selectedPriority, setSelectedPriority] = useState<"low" | "medium" | "high">("medium");
+  const [adding, setAdding] = useState(false);
 
-  const addMission = () => {
+  const handleAddMission = async () => {
     if (!newMission.trim()) return;
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     
-    const mission: Mission = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      title: newMission.trim(),
-      completed: false,
-      priority: selectedPriority,
-      createdAt: new Date(),
-    };
-    
-    setMissions(prev => [mission, ...prev]);
+    setAdding(true);
+    await addMission(newMission.trim(), selectedPriority);
     setNewMission("");
+    setAdding(false);
   };
 
-  const toggleMission = (id: string) => {
-    setMissions(prev => prev.map(m => 
-      m.id === id ? { ...m, completed: !m.completed } : m
-    ));
-  };
-
-  const deleteMission = (id: string) => {
-    setMissions(prev => prev.filter(m => m.id !== id));
-  };
-
-  const completedCount = missions.filter(m => m.completed).length;
-  const pendingCount = missions.filter(m => !m.completed).length;
+  const completedCount = missions.filter((m) => m.completed).length;
+  const pendingCount = missions.filter((m) => !m.completed).length;
 
   return (
     <div className="min-h-screen pb-28 relative">
@@ -94,22 +80,27 @@ const MissionsScreen = () => {
               placeholder="Nova missão..."
               value={newMission}
               onChange={(e) => setNewMission(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addMission()}
-              className="flex-1 h-14 bg-white/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base px-5"
+              onKeyPress={(e) => e.key === "Enter" && handleAddMission()}
+              className="flex-1 h-14 bg-white/90 dark:bg-card/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base px-5"
             />
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={addMission}
-              className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center"
+              onClick={handleAddMission}
+              disabled={adding}
+              className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center disabled:opacity-50"
             >
-              <Plus className="w-6 h-6 text-white" />
+              {adding ? (
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              ) : (
+                <Plus className="w-6 h-6 text-white" />
+              )}
             </motion.button>
           </div>
 
           {/* Priority Selector */}
           <div className="flex gap-2 mt-3">
-            {(['low', 'medium', 'high'] as const).map((priority) => (
+            {(["low", "medium", "high"] as const).map((priority) => (
               <motion.button
                 key={priority}
                 whileHover={{ scale: 1.05 }}
@@ -118,10 +109,10 @@ const MissionsScreen = () => {
                 className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
                   selectedPriority === priority
                     ? `bg-gradient-to-r ${priorityConfig[priority].gradient} text-white shadow-lg ${priorityConfig[priority].shadow}`
-                    : 'bg-white/70 text-foreground'
+                    : "bg-white/70 dark:bg-card/70 text-foreground"
                 }`}
               >
-                {priorityConfig[priority].icon} {priority === 'low' ? 'Baixa' : priority === 'medium' ? 'Média' : 'Alta'}
+                {priorityConfig[priority].icon} {priority === "low" ? "Baixa" : priority === "medium" ? "Média" : "Alta"}
               </motion.button>
             ))}
           </div>
@@ -200,9 +191,33 @@ const MissionsScreen = () => {
           className="px-5"
         >
           <h2 className="font-display font-bold text-lg text-foreground mb-3">Minhas Missões</h2>
-          
-          {missions.length === 0 ? (
-            <motion.div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40">
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : !user ? (
+            <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 3 }}
+                className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg shadow-violet-500/30"
+              >
+                <span className="text-5xl">🔐</span>
+              </motion.div>
+              <h3 className="font-display font-bold text-xl text-foreground mb-2">Faça login</h3>
+              <p className="text-sm text-muted-foreground mb-6">Entre para salvar suas missões na nuvem</p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate("/auth")}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30"
+              >
+                Entrar
+              </motion.button>
+            </motion.div>
+          ) : missions.length === 0 ? (
+            <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
               <motion.div
                 animate={{ y: [0, -5, 0] }}
                 transition={{ repeat: Infinity, duration: 3 }}
@@ -221,8 +236,8 @@ const MissionsScreen = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className={`bg-white/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40 ${
-                    mission.completed ? 'opacity-60' : ''
+                  className={`bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-2xl p-4 shadow-lg border border-white/40 dark:border-border/40 ${
+                    mission.completed ? "opacity-60" : ""
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -232,29 +247,29 @@ const MissionsScreen = () => {
                       onClick={() => toggleMission(mission.id)}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                         mission.completed
-                          ? 'bg-gradient-to-br from-emerald-400 to-green-500'
-                          : `bg-gradient-to-br ${priorityConfig[mission.priority].gradient}`
+                          ? "bg-gradient-to-br from-emerald-400 to-green-500"
+                          : `bg-gradient-to-br ${priorityConfig[mission.priority as keyof typeof priorityConfig].gradient}`
                       } shadow-lg`}
                     >
                       {mission.completed ? (
                         <Check className="w-5 h-5 text-white" />
                       ) : (
-                        <span className="text-lg">{priorityConfig[mission.priority].icon}</span>
+                        <span className="text-lg">{priorityConfig[mission.priority as keyof typeof priorityConfig].icon}</span>
                       )}
                     </motion.button>
                     <div className="flex-1">
-                      <p className={`font-semibold text-foreground ${mission.completed ? 'line-through' : ''}`}>
-                        {mission.title}
+                      <p className={`font-semibold text-foreground ${mission.completed ? "line-through" : ""}`}>
+                        {mission.text}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {mission.createdAt.toLocaleDateString('pt-BR')}
+                        {new Date(mission.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => deleteMission(mission.id)}
-                      className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center"
+                      className="w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center"
                     >
                       <Trash2 className="w-4 h-4 text-rose-500" />
                     </motion.button>
