@@ -87,15 +87,16 @@ async function getUnsyncedSightings(): Promise<FaunaSighting[]> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(STORE_NAME, "readonly");
     const store = transaction.objectStore(STORE_NAME);
-    const index = store.index("synced");
-    const request = index.getAll(IDBKeyRange.only(false));
+    const request = store.getAll();
 
     request.onerror = () => reject(request.error);
     request.onsuccess = () => {
-      const sightings = request.result.map((s: any) => ({
-        ...s,
-        timestamp: new Date(s.timestamp),
-      }));
+      const sightings = request.result
+        .filter((s: any) => s.synced === false)
+        .map((s: any) => ({
+          ...s,
+          timestamp: new Date(s.timestamp),
+        }));
       resolve(sightings);
     };
   });
