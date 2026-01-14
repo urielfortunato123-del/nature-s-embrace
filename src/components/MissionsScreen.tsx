@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Check, Trash2, Loader2 } from "lucide-react";
+import { Plus, Check, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useMissions } from "@/hooks/useMissions";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
+
+interface Mission {
+  id: string;
+  text: string;
+  completed: boolean;
+  priority: "low" | "medium" | "high";
+  createdAt: Date;
+}
 
 const priorityConfig = {
   low: { gradient: "from-emerald-400 to-green-500", shadow: "shadow-emerald-500/30", icon: "🌱" },
@@ -21,24 +26,33 @@ const quickMissions = [
 ];
 
 const MissionsScreen = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { missions, loading, addMission, toggleMission, deleteMission } = useMissions();
+  const [missions, setMissions] = useState<Mission[]>([]);
   const [newMission, setNewMission] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<"low" | "medium" | "high">("medium");
-  const [adding, setAdding] = useState(false);
 
-  const handleAddMission = async () => {
+  const addMission = () => {
     if (!newMission.trim()) return;
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    
-    setAdding(true);
-    await addMission(newMission.trim(), selectedPriority);
+
+    const mission: Mission = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      text: newMission.trim(),
+      completed: false,
+      priority: selectedPriority,
+      createdAt: new Date(),
+    };
+
+    setMissions((prev) => [mission, ...prev]);
     setNewMission("");
-    setAdding(false);
+  };
+
+  const toggleMission = (id: string) => {
+    setMissions((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, completed: !m.completed } : m))
+    );
+  };
+
+  const deleteMission = (id: string) => {
+    setMissions((prev) => prev.filter((m) => m.id !== id));
   };
 
   const completedCount = missions.filter((m) => m.completed).length;
@@ -80,21 +94,16 @@ const MissionsScreen = () => {
               placeholder="Nova missão..."
               value={newMission}
               onChange={(e) => setNewMission(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleAddMission()}
+              onKeyPress={(e) => e.key === "Enter" && addMission()}
               className="flex-1 h-14 bg-white/90 dark:bg-card/90 backdrop-blur-md border-0 rounded-full shadow-lg text-base px-5"
             />
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleAddMission}
-              disabled={adding}
-              className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center disabled:opacity-50"
+              onClick={addMission}
+              className="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-green-500 shadow-lg shadow-emerald-500/30 flex items-center justify-center"
             >
-              {adding ? (
-                <Loader2 className="w-6 h-6 text-white animate-spin" />
-              ) : (
-                <Plus className="w-6 h-6 text-white" />
-              )}
+              <Plus className="w-6 h-6 text-white" />
             </motion.button>
           </div>
 
@@ -192,31 +201,7 @@ const MissionsScreen = () => {
         >
           <h2 className="font-display font-bold text-lg text-foreground mb-3">Minhas Missões</h2>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-          ) : !user ? (
-            <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 3 }}
-                className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center shadow-lg shadow-violet-500/30"
-              >
-                <span className="text-5xl">🔐</span>
-              </motion.div>
-              <h3 className="font-display font-bold text-xl text-foreground mb-2">Faça login</h3>
-              <p className="text-sm text-muted-foreground mb-6">Entre para salvar suas missões na nuvem</p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate("/auth")}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30"
-              >
-                Entrar
-              </motion.button>
-            </motion.div>
-          ) : missions.length === 0 ? (
+          {missions.length === 0 ? (
             <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
               <motion.div
                 animate={{ y: [0, -5, 0] }}
@@ -248,13 +233,13 @@ const MissionsScreen = () => {
                       className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                         mission.completed
                           ? "bg-gradient-to-br from-emerald-400 to-green-500"
-                          : `bg-gradient-to-br ${priorityConfig[mission.priority as keyof typeof priorityConfig].gradient}`
+                          : `bg-gradient-to-br ${priorityConfig[mission.priority].gradient}`
                       } shadow-lg`}
                     >
                       {mission.completed ? (
                         <Check className="w-5 h-5 text-white" />
                       ) : (
-                        <span className="text-lg">{priorityConfig[mission.priority as keyof typeof priorityConfig].icon}</span>
+                        <span className="text-lg">{priorityConfig[mission.priority].icon}</span>
                       )}
                     </motion.button>
                     <div className="flex-1">
@@ -262,7 +247,7 @@ const MissionsScreen = () => {
                         {mission.text}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(mission.created_at).toLocaleDateString("pt-BR")}
+                        {mission.createdAt.toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <motion.button

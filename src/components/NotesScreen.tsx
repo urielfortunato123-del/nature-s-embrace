@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Calendar, Loader2 } from "lucide-react";
+import { Plus, X, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useNotes } from "@/hooks/useNotes";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import natureHeroBg from "@/assets/nature-hero-bg.png";
+
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  location?: string;
+  createdAt: Date;
+  color: string;
+}
 
 const categories = [
   { id: "observation", label: "Observação", icon: "👁️", gradient: "from-sky-400 to-blue-500" },
@@ -25,12 +32,9 @@ const noteColors = [
 ];
 
 const NotesScreen = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { notes, loading, addNote, updateNote, deleteNote } = useNotes();
+  const [notes, setNotes] = useState<Note[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -38,43 +42,45 @@ const NotesScreen = () => {
     location: "",
   });
 
-  const handleAddNote = async () => {
+  const addNote = () => {
     if (!formData.title.trim() && !formData.content.trim()) return;
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
 
-    setSaving(true);
-    await addNote({
+    const note: Note = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       title: formData.title.trim() || "Nota rápida",
       content: formData.content.trim(),
       category: formData.category,
       location: formData.location.trim() || undefined,
-    });
+      createdAt: new Date(),
+      color: noteColors[Math.floor(Math.random() * noteColors.length)],
+    };
+
+    setNotes((prev) => [note, ...prev]);
     resetForm();
-    setSaving(false);
   };
 
-  const handleUpdateNote = async () => {
-    if (!editingNoteId) return;
+  const updateNote = () => {
+    if (!editingNote) return;
 
-    setSaving(true);
-    await updateNote(editingNoteId, {
-      title: formData.title,
-      content: formData.content,
-      category: formData.category,
-      location: formData.location || undefined,
-    });
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === editingNote.id
+          ? { ...n, title: formData.title, content: formData.content, category: formData.category, location: formData.location }
+          : n
+      )
+    );
     resetForm();
-    setSaving(false);
   };
 
-  const openEdit = (note: { id: string; title: string; content: string | null; category: string; location: string | null }) => {
-    setEditingNoteId(note.id);
+  const deleteNote = (id: string) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const openEdit = (note: Note) => {
+    setEditingNote(note);
     setFormData({
       title: note.title,
-      content: note.content || "",
+      content: note.content,
       category: note.category,
       location: note.location || "",
     });
@@ -83,11 +89,9 @@ const NotesScreen = () => {
 
   const resetForm = () => {
     setShowForm(false);
-    setEditingNoteId(null);
+    setEditingNote(null);
     setFormData({ title: "", content: "", category: "observation", location: "" });
   };
-
-  const getNoteColor = (index: number) => noteColors[index % noteColors.length];
 
   return (
     <div className="min-h-screen pb-28 relative">
@@ -137,10 +141,6 @@ const NotesScreen = () => {
                 whileHover={{ scale: 1.05, y: -3 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
-                  if (!user) {
-                    navigate("/auth");
-                    return;
-                  }
                   setFormData((prev) => ({ ...prev, category: cat.id }));
                   setShowForm(true);
                 }}
@@ -163,31 +163,7 @@ const NotesScreen = () => {
         >
           <h2 className="font-display font-bold text-lg text-foreground mb-3">Minhas Notas</h2>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-primary animate-spin" />
-            </div>
-          ) : !user ? (
-            <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ repeat: Infinity, duration: 3 }}
-                className="w-24 h-24 mx-auto mb-5 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
-              >
-                <span className="text-5xl">🔐</span>
-              </motion.div>
-              <h3 className="font-display font-bold text-xl text-foreground mb-2">Faça login</h3>
-              <p className="text-sm text-muted-foreground mb-6">Entre para salvar suas notas na nuvem</p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate("/auth")}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30"
-              >
-                Entrar
-              </motion.button>
-            </motion.div>
-          ) : notes.length === 0 ? (
+          {notes.length === 0 ? (
             <motion.div className="bg-white/70 dark:bg-card/70 backdrop-blur-xl rounded-3xl p-8 text-center shadow-xl border border-white/40 dark:border-border/40">
               <motion.div
                 animate={{ y: [0, -5, 0] }}
@@ -217,7 +193,7 @@ const NotesScreen = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.03, y: -3 }}
-                  className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br ${getNoteColor(index)} shadow-lg min-h-[140px] cursor-pointer`}
+                  className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-br ${note.color} shadow-lg min-h-[140px] cursor-pointer`}
                   onClick={() => openEdit(note)}
                 >
                   <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-transparent" />
@@ -240,7 +216,7 @@ const NotesScreen = () => {
                     <p className="text-white/80 text-xs line-clamp-3">{note.content}</p>
                     <div className="flex items-center gap-1 mt-2 text-white/60 text-[10px]">
                       <Calendar className="w-3 h-3" />
-                      {new Date(note.created_at).toLocaleDateString("pt-BR")}
+                      {note.createdAt.toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                 </motion.div>
@@ -270,7 +246,7 @@ const NotesScreen = () => {
             >
               <div className="flex items-center justify-between mb-5">
                 <h2 className="font-display font-bold text-xl text-foreground flex items-center gap-2">
-                  {editingNoteId ? "✏️ Editar Nota" : "📝 Nova Nota"}
+                  {editingNote ? "✏️ Editar Nota" : "📝 Nova Nota"}
                 </h2>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -335,17 +311,10 @@ const NotesScreen = () => {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={editingNoteId ? handleUpdateNote : handleAddNote}
-                    disabled={saving}
-                    className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30 disabled:opacity-50 flex items-center justify-center gap-2"
+                    onClick={editingNote ? updateNote : addNote}
+                    className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-green-500 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-500/30"
                   >
-                    {saving ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : editingNoteId ? (
-                      "Atualizar"
-                    ) : (
-                      "Salvar"
-                    )}
+                    {editingNote ? "Atualizar" : "Salvar"}
                   </motion.button>
                 </div>
               </div>
@@ -355,19 +324,17 @@ const NotesScreen = () => {
       </AnimatePresence>
 
       {/* FAB */}
-      {user && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.5, type: "spring" }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setShowForm(true)}
-          className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-xl shadow-amber-500/30 z-50"
-        >
-          <Plus className="w-7 h-7" />
-        </motion.button>
-      )}
+      <motion.button
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.5, type: "spring" }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setShowForm(true)}
+        className="fixed bottom-28 right-5 w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-xl shadow-amber-500/30 z-50"
+      >
+        <Plus className="w-7 h-7" />
+      </motion.button>
     </div>
   );
 };
