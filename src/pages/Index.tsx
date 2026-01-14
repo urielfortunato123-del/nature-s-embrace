@@ -9,6 +9,7 @@ import ReportsScreen from "@/components/ReportsScreen";
 import LibraryScreen from "@/components/LibraryScreen";
 import MissionsScreen from "@/components/MissionsScreen";
 import NotesScreen from "@/components/NotesScreen";
+import { SightingsProvider } from "@/contexts/SightingsContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -42,21 +43,23 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-        >
-          {renderScreen()}
-        </motion.div>
-      </AnimatePresence>
-      
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-    </div>
+    <SightingsProvider>
+      <div className="min-h-screen bg-background overflow-x-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {renderScreen()}
+          </motion.div>
+        </AnimatePresence>
+        
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+    </SightingsProvider>
   );
 };
 
