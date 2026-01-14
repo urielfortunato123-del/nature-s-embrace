@@ -32,18 +32,18 @@ const features = [
     shadowColor: "shadow-rose-500/30"
   },
   { 
+    id: "gallery", 
+    icon: "🖼️", 
+    label: "Galeria", 
+    gradient: "from-violet-400 to-purple-500",
+    shadowColor: "shadow-violet-500/30"
+  },
+  { 
     id: "reports", 
     icon: "📋", 
     label: "Relatórios", 
     gradient: "from-amber-400 to-orange-500",
     shadowColor: "shadow-amber-500/30"
-  },
-  { 
-    id: "ocr", 
-    icon: "📝", 
-    label: "OCR Scanner", 
-    gradient: "from-violet-400 to-purple-500",
-    shadowColor: "shadow-violet-500/30"
   },
   { 
     id: "library", 
@@ -178,7 +178,7 @@ const HomeScreen = ({ onNavigate }: HomeScreenProps) => {
                 transition={{ delay: 0.6 + index * 0.08 }}
                 whileHover={{ scale: 1.05, y: -5 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onNavigate(feature.id === 'ocr' ? 'camera' : feature.id)}
+                onClick={() => onNavigate(feature.id)}
                 className={`
                   relative overflow-hidden rounded-2xl p-4
                   bg-gradient-to-br ${feature.gradient}

@@ -9,6 +9,7 @@ import ReportsScreen from "@/components/ReportsScreen";
 import LibraryScreen from "@/components/LibraryScreen";
 import MissionsScreen from "@/components/MissionsScreen";
 import NotesScreen from "@/components/NotesScreen";
+import GalleryScreen from "@/components/GalleryScreen";
 import { SightingsProvider } from "@/contexts/SightingsContext";
 
 const Index = () => {
@@ -37,6 +38,8 @@ const Index = () => {
         return <MissionsScreen />;
       case "notes":
         return <NotesScreen />;
+      case "gallery":
+        return <GalleryScreen />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
