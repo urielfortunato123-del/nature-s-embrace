@@ -4,7 +4,7 @@ import { MapPin, Layers, Search, Plus, LocateFixed, X, Check, Wifi, WifiOff, Ref
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -44,6 +44,15 @@ function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
+  return null;
+}
+
+// Component to capture map instance
+function MapRefHandler({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
+  const map = useMap();
+  useEffect(() => {
+    mapRef.current = map;
+  }, [map, mapRef]);
   return null;
 }
 
@@ -180,8 +189,8 @@ const MapScreen = () => {
           zoom={4}
           className="w-full h-full rounded-3xl"
           zoomControl={false}
-          ref={mapRef}
         >
+          <MapRefHandler mapRef={mapRef} />
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
