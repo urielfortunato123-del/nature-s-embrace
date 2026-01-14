@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { RotateCcw, Flashlight, FlashlightOff, Grid3X3, X, Check, Download } from "lucide-react";
+import { RotateCcw, Flashlight, FlashlightOff, Grid3X3, X, Check, Download, Loader2, Search, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const modes = [
   { id: 'photo', label: 'Foto', icon: '📷', gradient: 'from-rose-400 to-pink-500', shadowColor: 'shadow-rose-500/30' },
@@ -25,6 +26,9 @@ const CameraScreen = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [showResult, setShowResult] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -59,7 +63,6 @@ const CameraScreen = () => {
       
       setCameraActive(true);
 
-      // Apply flash (torch) if supported
       if (flashOn) {
         const track = mediaStream.getVideoTracks()[0];
         const capabilities = track.getCapabilities?.();
@@ -117,6 +120,28 @@ const CameraScreen = () => {
     };
   }, [stream]);
 
+  const analyzeImage = async (imageData: string, mode: string) => {
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: { image: imageData, mode }
+      });
+
+      if (error) throw error;
+
+      setAnalysisResult(data.result);
+      setShowResult(true);
+      toast.success(mode === 'ocr' ? 'Texto extraído!' : 'Espécie identificada!');
+    } catch (error) {
+      console.error('Analysis error:', error);
+      toast.error('Erro ao analisar imagem. Tente novamente.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
 
@@ -128,7 +153,6 @@ const CameraScreen = () => {
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      // Flip horizontally if using front camera
       if (facingMode === 'user') {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
@@ -138,9 +162,14 @@ const CameraScreen = () => {
       const imageData = canvas.toDataURL('image/jpeg', 0.9);
       setCapturedImage(imageData);
       stopCamera();
-      toast.success('Foto capturada!');
+      
+      if (activeMode === 'ocr' || activeMode === 'ai') {
+        analyzeImage(imageData, activeMode);
+      } else {
+        toast.success('Foto capturada!');
+      }
     }
-  }, [facingMode, stopCamera]);
+  }, [facingMode, stopCamera, activeMode]);
 
   const startRecording = useCallback(() => {
     if (!stream) return;
@@ -158,7 +187,6 @@ const CameraScreen = () => {
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       
-      // Download the video
       const a = document.createElement('a');
       a.href = url;
       a.download = `bionatura-video-${new Date().toISOString().split('T')[0]}.webm`;
@@ -196,11 +224,13 @@ const CameraScreen = () => {
         break;
       case 'scan':
         setActiveMode('ocr');
-        if (!cameraActive) startCamera();
+        if (!cameraActive && !capturedImage) startCamera();
+        toast.info('Modo OCR ativado. Capture uma imagem com texto.');
         break;
       case 'identify':
         setActiveMode('ai');
-        if (!cameraActive) startCamera();
+        if (!cameraActive && !capturedImage) startCamera();
+        toast.info('Modo IA ativado. Capture uma espécie para identificar.');
         break;
       case 'record':
         if (!cameraActive) {
@@ -219,15 +249,23 @@ const CameraScreen = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setCapturedImage(event.target?.result as string);
+        const imageData = event.target?.result as string;
+        setCapturedImage(imageData);
         stopCamera();
+        
+        if (activeMode === 'ocr' || activeMode === 'ai') {
+          analyzeImage(imageData, activeMode);
+        }
       };
       reader.readAsDataURL(file);
     }
+    e.target.value = '';
   };
 
   const discardImage = () => {
     setCapturedImage(null);
+    setAnalysisResult(null);
+    setShowResult(false);
     startCamera();
   };
 
@@ -243,25 +281,35 @@ const CameraScreen = () => {
     toast.success('Imagem salva!');
   };
 
+  const copyResult = () => {
+    if (analysisResult) {
+      navigator.clipboard.writeText(analysisResult);
+      toast.success('Texto copiado!');
+    }
+  };
+
+  const reanalyze = () => {
+    if (capturedImage) {
+      analyzeImage(capturedImage, activeMode);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-28 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
-      {/* Hidden file input for gallery */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*"
+        capture="environment"
         className="hidden"
         onChange={handleFileSelect}
       />
       
-      {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Decorative Elements */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-pink-500/20 to-violet-500/20 rounded-full blur-3xl" />
       <div className="absolute bottom-40 right-5 w-40 h-40 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl" />
 
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -307,7 +355,6 @@ const CameraScreen = () => {
         </div>
       </motion.div>
 
-      {/* Camera Viewfinder */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -315,7 +362,6 @@ const CameraScreen = () => {
         className="mx-5 mt-2"
       >
         <div className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 shadow-2xl border border-white/10">
-          {/* Live Camera View */}
           {cameraActive && !capturedImage && (
             <video
               ref={videoRef}
@@ -328,7 +374,6 @@ const CameraScreen = () => {
             />
           )}
 
-          {/* Captured Image Preview */}
           {capturedImage && (
             <img
               src={capturedImage}
@@ -337,7 +382,6 @@ const CameraScreen = () => {
             />
           )}
 
-          {/* Placeholder when camera is off */}
           {!cameraActive && !capturedImage && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
@@ -363,7 +407,6 @@ const CameraScreen = () => {
             </div>
           )}
 
-          {/* Recording Indicator */}
           {isRecording && (
             <motion.div
               animate={{ opacity: [1, 0.5, 1] }}
@@ -375,7 +418,21 @@ const CameraScreen = () => {
             </motion.div>
           )}
 
-          {/* Grid Overlay */}
+          {isAnalyzing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 bg-black/60 flex items-center justify-center"
+            >
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 text-white animate-spin mx-auto mb-3" />
+                <p className="text-white font-medium">
+                  {activeMode === 'ocr' ? 'Extraindo texto...' : 'Identificando espécie...'}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
           <AnimatePresence>
             {gridOn && cameraActive && (
               <motion.div
@@ -393,7 +450,6 @@ const CameraScreen = () => {
             )}
           </AnimatePresence>
 
-          {/* Focus Frame */}
           {cameraActive && !capturedImage && (
             <div className="absolute inset-10 pointer-events-none">
               <div className="absolute top-0 left-0 w-10 h-10 border-l-4 border-t-4 border-white rounded-tl-xl" />
@@ -403,7 +459,6 @@ const CameraScreen = () => {
             </div>
           )}
 
-          {/* Mode Indicator */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -416,8 +471,7 @@ const CameraScreen = () => {
             </div>
           </motion.div>
 
-          {/* Captured Image Actions */}
-          {capturedImage && (
+          {capturedImage && !isAnalyzing && !showResult && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -439,150 +493,219 @@ const CameraScreen = () => {
               >
                 <Download className="w-7 h-7 text-white" />
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                  setCapturedImage(null);
-                  toast.success('Foto confirmada!');
-                }}
-                className="w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center shadow-lg"
-              >
-                <Check className="w-7 h-7 text-white" />
-              </motion.button>
+              {(activeMode === 'ocr' || activeMode === 'ai') && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => analyzeImage(capturedImage, activeMode)}
+                  className="w-14 h-14 rounded-full bg-purple-500 flex items-center justify-center shadow-lg"
+                >
+                  <Search className="w-7 h-7 text-white" />
+                </motion.button>
+              )}
             </motion.div>
           )}
         </div>
       </motion.div>
 
-      {/* Camera Controls */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="px-5 mt-8"
-      >
-        <div className="flex items-center justify-center gap-10">
-          {/* Gallery Button */}
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => fileInputRef.current?.click()}
-            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/30 flex items-center justify-center"
+      {/* Analysis Result Modal */}
+      <AnimatePresence>
+        {showResult && analysisResult && (
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            className="fixed inset-x-0 bottom-0 z-50 bg-gradient-to-t from-gray-900 via-gray-900 to-gray-900/95 rounded-t-3xl max-h-[70vh] overflow-hidden"
           >
-            <span className="text-2xl">🖼️</span>
-          </motion.button>
-
-          {/* Capture Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={cameraActive ? handleCapture : startCamera}
-            disabled={!!capturedImage}
-            className={`w-24 h-24 rounded-full bg-gradient-to-br ${currentMode.gradient} flex items-center justify-center shadow-2xl ${currentMode.shadowColor} ${capturedImage ? 'opacity-50' : ''}`}
-          >
-            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border-4 border-white/40">
-              <span className="text-3xl">{currentMode.icon}</span>
+            <div className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  {activeMode === 'ocr' ? '📝 Texto Extraído' : '🔍 Identificação'}
+                </h3>
+                <div className="flex gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={copyResult}
+                    className="p-2 bg-white/10 rounded-xl"
+                  >
+                    <Copy className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={reanalyze}
+                    className="p-2 bg-white/10 rounded-xl"
+                  >
+                    <Search className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowResult(false)}
+                    className="p-2 bg-white/10 rounded-xl"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </motion.button>
+                </div>
+              </div>
+              <div className="overflow-y-auto max-h-[50vh] pr-2">
+                <p className="text-white/90 whitespace-pre-wrap leading-relaxed">
+                  {analysisResult}
+                </p>
+              </div>
+              <div className="flex gap-3 mt-4 pt-4 border-t border-white/10">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={discardImage}
+                  className="flex-1 py-3 bg-gradient-to-r from-rose-500 to-pink-500 rounded-xl text-white font-semibold"
+                >
+                  Nova Foto
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowResult(false);
+                    toast.success('Resultado salvo!');
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-semibold"
+                >
+                  Concluir
+                </motion.button>
+              </div>
             </div>
-          </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Flip Camera */}
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              flipCamera();
-              if (cameraActive) startCamera();
-            }}
-            className="w-16 h-16 rounded-2xl bg-gradient-to-br from-fuchsia-400 to-purple-500 shadow-lg shadow-fuchsia-500/30 flex items-center justify-center"
-          >
-            <RotateCcw className="w-7 h-7 text-white" />
-          </motion.button>
-        </div>
-      </motion.div>
+      {/* Camera Controls */}
+      {!showResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="px-5 mt-8"
+        >
+          <div className="flex items-center justify-center gap-10">
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 shadow-lg shadow-cyan-500/30 flex items-center justify-center"
+            >
+              <span className="text-2xl">🖼️</span>
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={cameraActive ? handleCapture : startCamera}
+              disabled={!!capturedImage || isAnalyzing}
+              className={`w-24 h-24 rounded-full bg-gradient-to-br ${currentMode.gradient} flex items-center justify-center shadow-2xl ${currentMode.shadowColor} ${capturedImage || isAnalyzing ? 'opacity-50' : ''}`}
+            >
+              <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border-4 border-white/40">
+                <span className="text-3xl">{currentMode.icon}</span>
+              </div>
+            </motion.button>
+
+            <motion.button 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                flipCamera();
+                if (cameraActive) startCamera();
+              }}
+              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-fuchsia-400 to-purple-500 shadow-lg shadow-fuchsia-500/30 flex items-center justify-center"
+            >
+              <RotateCcw className="w-7 h-7 text-white" />
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Mode Selector */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="px-5 mt-8"
-      >
-        <div className="grid grid-cols-3 gap-3">
-          {modes.map((mode, index) => {
-            const isActive = activeMode === mode.id;
-            return (
-              <motion.button
-                key={mode.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.08 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveMode(mode.id as typeof activeMode)}
-                className={`
-                  relative overflow-hidden rounded-2xl p-4
-                  bg-gradient-to-br ${mode.gradient}
-                  shadow-lg ${mode.shadowColor}
-                  transition-all duration-300
-                  ${isActive ? 'ring-4 ring-white/60' : 'opacity-70'}
-                `}
-              >
-                {/* Glossy overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
-                
-                {/* Icon */}
-                <div className="relative z-10 text-3xl mb-1 drop-shadow-md text-center">
-                  {mode.icon}
-                </div>
-                
-                {/* Label */}
-                <p className="relative z-10 text-white font-semibold text-sm drop-shadow-md text-center">
-                  {mode.label}
-                </p>
-              </motion.button>
-            );
-          })}
-        </div>
-      </motion.div>
+      {!showResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="px-5 mt-8"
+        >
+          <div className="grid grid-cols-3 gap-3">
+            {modes.map((mode, index) => {
+              const isActive = activeMode === mode.id;
+              return (
+                <motion.button
+                  key={mode.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + index * 0.08 }}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveMode(mode.id as typeof activeMode)}
+                  className={`
+                    relative overflow-hidden rounded-2xl p-4
+                    bg-gradient-to-br ${mode.gradient}
+                    shadow-lg ${mode.shadowColor}
+                    transition-all duration-300
+                    ${isActive ? 'ring-4 ring-white/60' : 'opacity-70'}
+                  `}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                  <div className="relative z-10 text-3xl mb-1 drop-shadow-md text-center">
+                    {mode.icon}
+                  </div>
+                  <p className="relative z-10 text-white font-semibold text-sm drop-shadow-md text-center">
+                    {mode.label}
+                  </p>
+                </motion.button>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
       {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="px-5 mt-8"
-      >
-        <h2 className="font-display font-bold text-white mb-4">Ações Rápidas</h2>
-        <div className="grid grid-cols-4 gap-3">
-          {quickActions.map((action, index) => (
-            <motion.button
-              key={action.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 + index * 0.05 }}
-              whileHover={{ scale: 1.05, y: -3 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => handleQuickAction(action.id)}
-              className={`
-                relative overflow-hidden rounded-2xl p-3
-                bg-gradient-to-br ${action.gradient}
-                shadow-lg ${action.shadowColor}
-                transition-all duration-300
-                ${action.id === 'record' && isRecording ? 'ring-4 ring-red-400 animate-pulse' : ''}
-              `}
-            >
-              <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
-              <div className="relative z-10 text-2xl mb-1 drop-shadow-md text-center">
-                {action.icon}
-              </div>
-              <p className="relative z-10 text-white font-semibold text-xs drop-shadow-md text-center">
-                {action.id === 'record' && isRecording ? 'Parar' : action.label}
-              </p>
-            </motion.button>
-          ))}
-        </div>
-      </motion.div>
+      {!showResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="px-5 mt-8"
+        >
+          <h2 className="font-display font-bold text-white mb-4">Ações Rápidas</h2>
+          <div className="grid grid-cols-4 gap-3">
+            {quickActions.map((action, index) => (
+              <motion.button
+                key={action.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 + index * 0.05 }}
+                whileHover={{ scale: 1.05, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleQuickAction(action.id)}
+                className={`
+                  relative overflow-hidden rounded-2xl p-3
+                  bg-gradient-to-br ${action.gradient}
+                  shadow-lg ${action.shadowColor}
+                  transition-all duration-300
+                  ${action.id === 'record' && isRecording ? 'ring-4 ring-red-400 animate-pulse' : ''}
+                `}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-transparent" />
+                <div className="relative z-10 text-2xl mb-1 drop-shadow-md text-center">
+                  {action.icon}
+                </div>
+                <p className="relative z-10 text-white font-semibold text-xs drop-shadow-md text-center">
+                  {action.id === 'record' && isRecording ? 'Parar' : action.label}
+                </p>
+              </motion.button>
+            ))}
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
