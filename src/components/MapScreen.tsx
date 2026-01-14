@@ -59,6 +59,47 @@ interface GeoSearchResult {
   lon: string;
 }
 
+type MapLayerType = "standard" | "satellite" | "terrain" | "dark";
+
+interface MapLayer {
+  id: MapLayerType;
+  name: string;
+  icon: string;
+  url: string;
+  attribution: string;
+}
+
+const mapLayers: MapLayer[] = [
+  {
+    id: "standard",
+    name: "Padrão",
+    icon: "🗺️",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenStreetMap contributors",
+  },
+  {
+    id: "satellite",
+    name: "Satélite",
+    icon: "🛰️",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "&copy; Esri",
+  },
+  {
+    id: "terrain",
+    name: "Terreno",
+    icon: "🏔️",
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenTopoMap contributors",
+  },
+  {
+    id: "dark",
+    name: "Escuro",
+    icon: "🌙",
+    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    attribution: "&copy; CartoDB",
+  },
+];
+
 const MapScreen = () => {
   const [sightings, setSightings] = useState<Sighting[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -67,6 +108,8 @@ const MapScreen = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showLayerPicker, setShowLayerPicker] = useState(false);
+  const [currentLayer, setCurrentLayer] = useState<MapLayerType>("standard");
   const [pendingLocation, setPendingLocation] = useState<{
     lat: number;
     lng: number;
@@ -82,6 +125,7 @@ const MapScreen = () => {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mapRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const pendingMarkerRef = useRef<L.Marker | null>(null);
 
@@ -164,9 +208,11 @@ const MapScreen = () => {
       attributionControl: true,
     }).setView([defaultCenter.lat, defaultCenter.lng], 4);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
+    const initialLayer = mapLayers.find((l) => l.id === currentLayer) || mapLayers[0];
+    const tileLayer = L.tileLayer(initialLayer.url, {
+      attribution: initialLayer.attribution,
     }).addTo(map);
+    tileLayerRef.current = tileLayer;
 
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
@@ -183,10 +229,28 @@ const MapScreen = () => {
       map.off();
       map.remove();
       mapRef.current = null;
+      tileLayerRef.current = null;
       markersLayerRef.current = null;
       pendingMarkerRef.current = null;
     };
   }, [defaultCenter]);
+
+  // Change map layer when currentLayer changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const layer = mapLayers.find((l) => l.id === currentLayer);
+    if (!layer) return;
+
+    if (tileLayerRef.current) {
+      tileLayerRef.current.remove();
+    }
+
+    tileLayerRef.current = L.tileLayer(layer.url, {
+      attribution: layer.attribution,
+    }).addTo(map);
+  }, [currentLayer]);
 
   // Render markers
   useEffect(() => {
@@ -384,10 +448,15 @@ const MapScreen = () => {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg shadow-violet-500/30 flex items-center justify-center"
+            onClick={() => setShowLayerPicker(!showLayerPicker)}
+            className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center ${
+              showLayerPicker
+                ? "bg-white dark:bg-card ring-2 ring-violet-500"
+                : "bg-gradient-to-br from-violet-400 to-purple-500 shadow-violet-500/30"
+            }`}
             title="Camadas"
           >
-            <Layers className="w-5 h-5 text-white" />
+            <Layers className={`w-5 h-5 ${showLayerPicker ? "text-violet-500" : "text-white"}`} />
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.1 }}
@@ -398,6 +467,40 @@ const MapScreen = () => {
             <LocateFixed className="w-5 h-5 text-white" />
           </motion.button>
         </div>
+
+        {/* Layer Picker */}
+        <AnimatePresence>
+          {showLayerPicker && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="absolute right-16 top-3 z-[1000] bg-white/95 dark:bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-white/40 dark:border-border/40"
+            >
+              <div className="p-2 space-y-1">
+                {mapLayers.map((layer) => (
+                  <motion.button
+                    key={layer.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      setCurrentLayer(layer.id);
+                      setShowLayerPicker(false);
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl flex items-center gap-3 transition-all ${
+                      currentLayer === layer.id
+                        ? "bg-gradient-to-r from-violet-400 to-purple-500 text-white shadow-lg"
+                        : "hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <span className="text-xl">{layer.icon}</span>
+                    <span className="font-medium text-sm">{layer.name}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Tap instruction */}
         <motion.div
