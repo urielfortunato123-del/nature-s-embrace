@@ -1,18 +1,65 @@
-import { motion } from "framer-motion";
-import { Camera, Image, ScanLine, Zap, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Camera, Image, ScanLine, Zap, RotateCcw, Sparkles, X, FlashlightOff, Flashlight, Grid3X3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CameraScreen = () => {
+  const [activeMode, setActiveMode] = useState<'photo' | 'ocr' | 'ai'>('photo');
+  const [flashOn, setFlashOn] = useState(false);
+  const [gridOn, setGridOn] = useState(false);
+
+  const modes = [
+    { id: 'photo', label: 'Foto', icon: Camera, gradient: 'from-rose-400 to-pink-500' },
+    { id: 'ocr', label: 'OCR', icon: ScanLine, gradient: 'from-violet-400 to-purple-500' },
+    { id: 'ai', label: 'IA', icon: Zap, gradient: 'from-amber-400 to-orange-500' },
+  ];
+
   return (
-    <div className="min-h-screen pb-24 safe-top">
+    <div className="min-h-screen pb-28 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+      {/* Decorative Elements */}
+      <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-pink-500/20 to-violet-500/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-40 right-5 w-40 h-40 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl" />
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-40 glass-nav px-4 py-4"
+        className="relative z-10 px-5 pt-6 pb-4"
       >
-        <h1 className="text-xl font-display font-bold text-foreground">Câmera</h1>
-        <p className="text-sm text-muted-foreground">Registre e identifique espécies</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-display font-bold text-white flex items-center gap-2">
+              📸 Câmera
+            </h1>
+            <p className="text-sm text-white/60 mt-1">Registre e identifique espécies</p>
+          </div>
+          <div className="flex gap-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setFlashOn(!flashOn)}
+              className={`w-11 h-11 rounded-2xl backdrop-blur-xl flex items-center justify-center transition-all ${
+                flashOn ? 'bg-amber-500 shadow-lg shadow-amber-500/30' : 'bg-white/10'
+              }`}
+            >
+              {flashOn ? (
+                <Flashlight className="w-5 h-5 text-white" />
+              ) : (
+                <FlashlightOff className="w-5 h-5 text-white/70" />
+              )}
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setGridOn(!gridOn)}
+              className={`w-11 h-11 rounded-2xl backdrop-blur-xl flex items-center justify-center transition-all ${
+                gridOn ? 'bg-white/30' : 'bg-white/10'
+              }`}
+            >
+              <Grid3X3 className="w-5 h-5 text-white/70" />
+            </motion.button>
+          </div>
+        </div>
       </motion.div>
 
       {/* Camera Viewfinder */}
@@ -20,29 +67,64 @@ const CameraScreen = () => {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="mx-4 mt-4"
+        className="mx-5 mt-2"
       >
-        <div className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gradient-to-br from-foreground/5 to-foreground/10">
-          {/* Placeholder Camera View */}
+        <div className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 shadow-2xl border border-white/10">
+          {/* Simulated Camera View */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">
               <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-dashed border-primary/30 flex items-center justify-center"
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  opacity: [0.5, 0.8, 0.5]
+                }}
+                transition={{ repeat: Infinity, duration: 2.5 }}
+                className="w-28 h-28 mx-auto mb-4 rounded-full border-4 border-dashed border-white/30 flex items-center justify-center"
               >
-                <Camera className="w-12 h-12 text-primary/50" />
+                <Camera className="w-14 h-14 text-white/40" />
               </motion.div>
-              <p className="text-muted-foreground font-medium">Toque para capturar</p>
+              <p className="text-white/50 font-medium">Toque para capturar</p>
             </div>
           </div>
 
-          {/* Scan Overlay */}
-          <div className="absolute inset-8 border-2 border-white/30 rounded-2xl" />
-          <div className="absolute top-8 left-8 w-8 h-8 border-l-4 border-t-4 border-primary rounded-tl-lg" />
-          <div className="absolute top-8 right-8 w-8 h-8 border-r-4 border-t-4 border-primary rounded-tr-lg" />
-          <div className="absolute bottom-8 left-8 w-8 h-8 border-l-4 border-b-4 border-primary rounded-bl-lg" />
-          <div className="absolute bottom-8 right-8 w-8 h-8 border-r-4 border-b-4 border-primary rounded-br-lg" />
+          {/* Grid Overlay */}
+          <AnimatePresence>
+            {gridOn && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 pointer-events-none"
+              >
+                <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className="border border-white/20" />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Focus Frame */}
+          <div className="absolute inset-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-10 h-10 border-l-4 border-t-4 border-white rounded-tl-xl" />
+            <div className="absolute top-0 right-0 w-10 h-10 border-r-4 border-t-4 border-white rounded-tr-xl" />
+            <div className="absolute bottom-0 left-0 w-10 h-10 border-l-4 border-b-4 border-white rounded-bl-xl" />
+            <div className="absolute bottom-0 right-0 w-10 h-10 border-r-4 border-b-4 border-white rounded-br-xl" />
+          </div>
+
+          {/* Mode Indicator */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2"
+          >
+            <div className={`px-4 py-2 rounded-full bg-gradient-to-r ${modes.find(m => m.id === activeMode)?.gradient} shadow-lg`}>
+              <span className="text-sm font-semibold text-white">
+                {modes.find(m => m.id === activeMode)?.label}
+              </span>
+            </div>
+          </motion.div>
         </div>
       </motion.div>
 
@@ -51,65 +133,75 @@ const CameraScreen = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="px-4 mt-6"
+        className="px-5 mt-8"
       >
-        <div className="flex items-center justify-center gap-8">
-          <Button 
-            size="icon" 
-            variant="outline"
-            className="w-14 h-14 rounded-full glass-card border-white/30"
-          >
-            <Image className="w-6 h-6" />
-          </Button>
-
-          <motion.button
+        <div className="flex items-center justify-center gap-10">
+          {/* Gallery Button */}
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="w-20 h-20 rounded-full gradient-sunset flex items-center justify-center shadow-glow"
+            className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center"
           >
-            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
-              <Camera className="w-8 h-8 text-white" />
+            <Image className="w-7 h-7 text-white/80" />
+          </motion.button>
+
+          {/* Capture Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.9 }}
+            className={`w-24 h-24 rounded-full bg-gradient-to-br ${modes.find(m => m.id === activeMode)?.gradient} flex items-center justify-center shadow-2xl`}
+          >
+            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border-4 border-white/40">
+              <Camera className="w-9 h-9 text-white" />
             </div>
           </motion.button>
 
-          <Button 
-            size="icon" 
-            variant="outline"
-            className="w-14 h-14 rounded-full glass-card border-white/30"
+          {/* Flip Camera */}
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center"
           >
-            <RotateCcw className="w-6 h-6" />
-          </Button>
+            <RotateCcw className="w-7 h-7 text-white/80" />
+          </motion.button>
         </div>
       </motion.div>
 
-      {/* Modes */}
+      {/* Mode Selector */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="px-4 mt-8"
+        className="px-5 mt-8"
       >
-        <div className="flex justify-center gap-4">
-          <Button 
-            variant="ghost" 
-            className="flex-col h-auto py-3 px-6 rounded-2xl bg-primary/10"
-          >
-            <Camera className="w-5 h-5 text-primary mb-1" />
-            <span className="text-xs font-medium">Foto</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="flex-col h-auto py-3 px-6 rounded-2xl"
-          >
-            <ScanLine className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">OCR</span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            className="flex-col h-auto py-3 px-6 rounded-2xl"
-          >
-            <Zap className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">IA</span>
-          </Button>
+        <div className="flex justify-center gap-3">
+          {modes.map((mode) => {
+            const Icon = mode.icon;
+            const isActive = activeMode === mode.id;
+            return (
+              <motion.button
+                key={mode.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setActiveMode(mode.id as typeof activeMode)}
+                className={`relative flex flex-col items-center py-3 px-6 rounded-2xl transition-all ${
+                  isActive ? '' : 'bg-white/5'
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeCameraMode"
+                    className={`absolute inset-0 bg-gradient-to-r ${mode.gradient} rounded-2xl`}
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <Icon className={`w-6 h-6 mb-1 relative z-10 ${isActive ? 'text-white' : 'text-white/50'}`} />
+                <span className={`text-xs font-semibold relative z-10 ${isActive ? 'text-white' : 'text-white/50'}`}>
+                  {mode.label}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -118,14 +210,20 @@ const CameraScreen = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="px-4 mt-8"
+        className="px-5 mt-8"
       >
-        <h2 className="font-display font-bold text-foreground mb-3">Capturas Recentes</h2>
-        <div className="glass-card rounded-3xl p-4">
-          <div className="flex items-center justify-center py-6 text-muted-foreground">
+        <h2 className="font-display font-bold text-white mb-4">Capturas Recentes</h2>
+        <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10">
+          <div className="flex items-center justify-center py-4">
             <div className="text-center">
-              <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhuma captura ainda</p>
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              >
+                <Image className="w-10 h-10 mx-auto mb-3 text-white/30" />
+              </motion.div>
+              <p className="text-sm text-white/50">Nenhuma captura ainda</p>
+              <p className="text-xs text-white/30 mt-1">Suas fotos aparecerão aqui</p>
             </div>
           </div>
         </div>
